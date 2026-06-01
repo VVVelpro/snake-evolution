@@ -1,0 +1,2269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>蛇之进化 - Snake Evolution</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+SC:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0e17;--bg2:#111827;--neon:#00ff88;--neon2:#00cc6a;--blue:#00aaff;--red:#ff4444;--purple:#aa44ff;--gold:#ffaa00;--rainbow:linear-gradient(90deg,#ff0000,#ff8800,#ffff00,#00ff00,#00aaff,#aa00ff,#ff0088);--text:#e0e0e0;--text2:#888}
+body{background:var(--bg);color:var(--text);font-family:'Noto Sans SC',sans-serif;overflow-x:hidden;min-height:100vh}
+h1,h2,h3,.score,.level,.combo-text,.overlay-title{font-family:'Orbitron',sans-serif}
+.game-wrapper{display:flex;flex-direction:column;align-items:center;padding:10px;gap:10px}
+.title-bar{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:1100px;padding:8px 16px;background:var(--bg2);border:1px solid #1a2a3a;border-radius:8px}
+.title-bar h1{font-size:1.3em;color:var(--neon);text-shadow:0 0 20px rgba(0,255,136,.5)}
+.title-bar .stats{display:flex;gap:20px;font-size:.85em}
+.title-bar .stats span{color:var(--text2)}
+.title-bar .stats .val{color:var(--neon);font-family:'Orbitron',sans-serif}
+.main-area{display:flex;gap:15px;align-items:flex-start;flex-wrap:wrap;justify-content:center}
+.game-col{display:flex;flex-direction:column;gap:8px}
+.status-bar{height:32px;display:flex;align-items:center;justify-content:center;gap:10px;font-size:.8em;padding:4px 12px;background:var(--bg2);border:1px solid #1a2a3a;border-radius:6px;min-width:640px}
+.status-bar .ability{padding:2px 8px;border-radius:4px;font-weight:700;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+.ability-beam{background:rgba(0,170,255,.3);color:var(--blue);border:1px solid var(--blue)}
+.ability-burn{background:rgba(255,68,68,.3);color:var(--red);border:1px solid var(--red)}
+.ability-ghost{background:rgba(170,68,255,.3);color:var(--purple);border:1px solid var(--purple)}
+.ability-chaos{background:rgba(255,255,255,.2);color:#fff;border:1px solid #fff;background-image:var(--rainbow);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.ability-glutton{background:rgba(255,170,0,.3);color:var(--gold);border:1px solid var(--gold)}
+.ability-king{background:rgba(255,0,100,.3);color:#ff0064;border:1px solid #ff0064}
+.ability-shield{background:rgba(255,170,0,.3);color:var(--gold);border:1px solid var(--gold)}
+.ability-slow{background:rgba(0,255,136,.2);color:var(--neon);border:1px solid var(--neon)}
+.canvas-wrap{position:relative;border:2px solid #1a2a3a;border-radius:8px;overflow:hidden;box-shadow:0 0 30px rgba(0,255,136,.1)}
+canvas{display:block}
+.exp-bar-wrap{width:640px;height:20px;background:var(--bg2);border:1px solid #1a2a3a;border-radius:10px;overflow:hidden;position:relative}
+.exp-bar{height:100%;background:linear-gradient(90deg,var(--neon2),var(--neon));border-radius:10px;transition:width .3s;width:0%}
+.exp-bar-wrap .exp-text{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:.7em;font-family:'Orbitron',sans-serif;color:#fff;text-shadow:0 0 4px #000}
+.skill-panel{width:420px;background:var(--bg2);border:1px solid #1a2a3a;border-radius:8px;padding:12px;max-height:560px;overflow-y:auto}
+.skill-panel h2{font-size:1em;color:var(--neon);margin-bottom:10px;text-align:center}
+.skill-trees{display:flex;flex-direction:column;gap:10px}
+.skill-tree{background:rgba(0,0,0,.3);border:1px solid #1a2a3a;border-radius:6px;padding:8px}
+.skill-tree h3{font-size:.8em;margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.skill-tree h3 .tree-icon{font-size:1.1em}
+.tree-survival h3{color:var(--neon)}
+.tree-speed h3{color:var(--blue)}
+.tree-power h3{color:var(--red)}
+.skill-items{display:flex;flex-direction:column;gap:4px}
+.skill-item{display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,.03);border:1px solid #1a2a3a;border-radius:4px;cursor:pointer;transition:all .2s;font-size:.78em}
+.skill-item:hover{border-color:var(--neon);background:rgba(0,255,136,.05)}
+.skill-item.unlocked{border-color:var(--neon);background:rgba(0,255,136,.1)}
+.skill-item.locked{opacity:.4;cursor:not-allowed}
+.skill-item .sk-icon{font-size:1.2em;width:28px;text-align:center}
+.skill-item .sk-info{flex:1}
+.skill-item .sk-name{font-weight:700;color:#ccc}
+.skill-item .sk-desc{color:var(--text2);font-size:.85em}
+.skill-item .sk-cost{font-family:'Orbitron',sans-serif;color:var(--gold);font-size:.85em;white-space:nowrap}
+.skill-item.unlocked .sk-cost{color:var(--neon)}
+.controls-hint{font-size:.75em;color:var(--text2);text-align:center;max-width:640px;line-height:1.6}
+.controls-hint kbd{background:var(--bg2);border:1px solid #333;border-radius:3px;padding:1px 5px;font-family:'Orbitron',sans-serif;font-size:.85em;color:var(--neon)}
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(10,14,23,.92);z-index:10;border-radius:6px}
+.overlay.hidden{display:none}
+.overlay-title{font-size:2em;color:var(--neon);text-shadow:0 0 30px rgba(0,255,136,.6);margin-bottom:15px}
+.overlay-sub{font-size:.9em;color:var(--text2);margin-bottom:8px}
+.overlay .final-score{font-family:'Orbitron',sans-serif;font-size:1.8em;color:var(--gold);margin:10px 0}
+.overlay .exp-gained{font-size:.9em;color:var(--neon);margin-bottom:15px}
+.btn{font-family:'Orbitron',sans-serif;padding:12px 32px;font-size:1em;border:2px solid var(--neon);background:transparent;color:var(--neon);border-radius:6px;cursor:pointer;transition:all .2s;margin-top:10px}
+.btn:hover{background:var(--neon);color:var(--bg);box-shadow:0 0 20px rgba(0,255,136,.5)}
+.overlay .instructions{font-size:.75em;color:var(--text2);margin-top:15px;text-align:center;line-height:1.8;max-width:400px}
+.overlay .instructions kbd{background:rgba(255,255,255,.1);border:1px solid #444;border-radius:3px;padding:1px 5px;font-family:'Orbitron',sans-serif;font-size:.85em;color:var(--neon)}
+.combo-popup{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'Orbitron',sans-serif;font-size:2em;color:var(--gold);text-shadow:0 0 30px rgba(255,170,0,.8);pointer-events:none;opacity:0;transition:all .3s;z-index:5}
+.combo-popup.show{opacity:1;animation:comboAnim 1s forwards}
+@keyframes comboAnim{0%{transform:translate(-50%,-50%) scale(.5);opacity:0}20%{transform:translate(-50%,-50%) scale(1.3);opacity:1}80%{transform:translate(-50%,-50%) scale(1);opacity:1}100%{transform:translate(-50%,-60%) scale(1);opacity:0}}
+.shield-flash{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:4;opacity:0}
+.shield-flash.active{animation:shieldFlash .5s forwards}
+@keyframes shieldFlash{0%{opacity:0;background:radial-gradient(circle,rgba(255,170,0,.8),transparent 70%)}50%{opacity:1}100%{opacity:0;background:radial-gradient(circle,rgba(255,170,0,0),transparent 70%)}}
+.screen-flash{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:4;opacity:0}
+.screen-flash.active{animation:screenFlash .3s forwards}
+@keyframes screenFlash{0%{opacity:0;background:rgba(255,255,255,.6)}50%{opacity:1}100%{opacity:0}}
+.mobile-controls{display:none;position:fixed;bottom:10px;left:50%;transform:translateX(-50%);z-index:20}
+.d-pad{display:grid;grid-template-columns:50px 50px 50px;grid-template-rows:50px 50px 50px;gap:4px}
+.d-pad button{background:rgba(0,255,136,.15);border:1px solid var(--neon);border-radius:8px;color:var(--neon);font-size:1.3em;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.d-pad button:active{background:rgba(0,255,136,.4)}
+.d-pad .empty{visibility:hidden}
+.skill-toggle{display:none;width:100%;padding:8px;background:var(--bg2);border:1px solid #1a2a3a;border-radius:6px;color:var(--neon);font-family:'Orbitron',sans-serif;font-size:.8em;cursor:pointer;text-align:center;margin-bottom:8px}
+@media(max-width:1100px){.main-area{flex-direction:column;align-items:center}.skill-panel{width:640px;max-height:300px}}
+@media(max-width:680px){canvas{width:100%!important;height:auto!important}.status-bar,.exp-bar-wrap{min-width:auto;width:100%}.skill-panel{width:100%}.mobile-controls{display:block}.skill-toggle{display:block}.skill-panel.collapsed{display:none}.controls-hint{display:none}}
+.canvas-shake{animation:shake .15s}
+@keyframes shake{0%,100%{transform:translate(0)}25%{transform:translate(-4px,2px)}50%{transform:translate(4px,-2px)}75%{transform:translate(-2px,4px)}}
+.canvas-shake-heavy{animation:shakeHeavy .2s}
+@keyframes shakeHeavy{0%,100%{transform:translate(0)}25%{transform:translate(-8px,4px)}50%{transform:translate(8px,-4px)}75%{transform:translate(-4px,8px)}}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:#1a2a3a;border-radius:3px}
+/* ========== AUDIO ========== */
+.audio-controls{position:fixed;top:10px;left:10px;z-index:100;display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.6);padding:6px 12px;border-radius:20px;border:1px solid #333}
+.audio-btn{width:32px;height:32px;border-radius:50%;background:rgba(0,255,136,.1);border:1px solid var(--neon);color:var(--neon);font-size:1em;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.audio-btn:hover{background:rgba(0,255,136,.2)}
+.audio-btn.muted{color:#555;border-color:#444;background:rgba(0,0,0,.3)}
+.audio-slider{width:80px;height:4px;accent-color:var(--neon)}
+.audio-label{font-size:.7em;color:#888;font-family:'Orbitron',sans-serif}
+/* ========== GM PANEL ========== */
+.gm-toggle{position:fixed;top:10px;right:10px;z-index:100;width:36px;height:36px;border-radius:50%;background:rgba(255,170,0,.15);border:1px solid var(--gold);color:var(--gold);font-size:1.1em;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.gm-toggle:hover{background:rgba(255,170,0,.3);box-shadow:0 0 15px rgba(255,170,0,.4)}
+.gm-panel{position:fixed;top:0;right:-380px;width:360px;height:100vh;background:rgba(10,14,23,.97);border-left:2px solid var(--gold);z-index:99;transition:right .3s cubic-bezier(.16,1,.3,1);overflow-y:auto;padding:20px 16px}
+.gm-panel.open{right:0}
+.gm-panel h2{font-family:'Orbitron',sans-serif;font-size:1em;color:var(--gold);margin-bottom:15px;text-align:center;letter-spacing:2px}
+.gm-section{background:rgba(0,0,0,.3);border:1px solid #2a2a3a;border-radius:8px;padding:12px;margin-bottom:10px}
+.gm-section h3{font-size:.75em;color:var(--gold);margin-bottom:8px;letter-spacing:1px;text-transform:uppercase}
+.gm-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.gm-row:last-child{margin-bottom:0}
+.gm-row label{font-size:.78em;color:#aaa;min-width:60px}
+.gm-row input[type=number]{flex:1;background:var(--bg);border:1px solid #333;border-radius:4px;color:var(--neon);font-family:'Orbitron',sans-serif;font-size:.85em;padding:6px 8px;width:60px;outline:none}
+.gm-row input[type=number]:focus{border-color:var(--gold)}
+.gm-row input[type=range]{flex:1;accent-color:var(--gold)}
+.gm-row .val-display{font-family:'Orbitron',sans-serif;font-size:.75em;color:var(--gold);min-width:30px;text-align:right}
+.gm-btn{font-family:'Orbitron',sans-serif;font-size:.7em;padding:8px 14px;border:1px solid var(--gold);background:rgba(255,170,0,.1);color:var(--gold);border-radius:4px;cursor:pointer;transition:all .2s;letter-spacing:1px}
+.gm-btn:hover{background:rgba(255,170,0,.25);box-shadow:0 0 10px rgba(255,170,0,.3)}
+.gm-btn.active{background:rgba(255,170,0,.3);box-shadow:0 0 15px rgba(255,170,0,.4)}
+.gm-btn.danger{border-color:var(--red);color:var(--red);background:rgba(255,68,68,.1)}
+.gm-btn.danger:hover{background:rgba(255,68,68,.25)}
+.gm-btn-row{display:flex;flex-wrap:wrap;gap:6px}
+.gm-check{display:flex;align-items:center;gap:6px;font-size:.78em;color:#ccc;cursor:pointer}
+.gm-check input{accent-color:var(--gold);width:16px;height:16px}
+/* ========== GM LOCK ========== */
+.gm-lock{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;text-align:center}
+.gm-lock-icon{font-size:3em;margin-bottom:15px;animation:lockPulse 2s infinite}
+@keyframes lockPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+.gm-lock-text{font-family:'Orbitron',sans-serif;font-size:1.2em;color:var(--gold);margin-bottom:20px;letter-spacing:2px}
+.gm-lock input[type=password]{width:200px;padding:12px 16px;background:var(--bg);border:2px solid #333;border-radius:6px;color:var(--neon);font-family:'Orbitron',sans-serif;font-size:1em;text-align:center;letter-spacing:4px;margin-bottom:15px;outline:none;transition:border-color .2s}
+.gm-lock input[type=password]:focus{border-color:var(--gold)}
+.gm-lock-hint{font-size:.7em;color:#555;margin-top:10px}
+.gm-lock.shake{animation:lockShake .3s}
+@keyframes lockShake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-10px)}40%,80%{transform:translateX(10px)}}
+
+/* Auth Overlay */
+#authOverlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(10,14,23,.97);z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Noto Sans SC',sans-serif}
+#authOverlay.hidden{display:none}
+.auth-box{background:var(--bg2);border:2px solid #1a2a3a;border-radius:12px;padding:40px 36px;max-width:400px;width:90%;text-align:center;box-shadow:0 0 40px rgba(0,255,136,.08)}
+.auth-box h2{font-family:'Orbitron',sans-serif;font-size:1.4em;color:var(--neon);text-shadow:0 0 20px rgba(0,255,136,.5);margin-bottom:6px;letter-spacing:2px}
+.auth-box .auth-sub{font-size:.85em;color:var(--text2);margin-bottom:24px}
+.auth-box input[type=email],.auth-box input[type=password]{width:100%;padding:12px 16px;background:var(--bg);border:2px solid #1a2a3a;border-radius:6px;color:var(--neon);font-family:'Orbitron',sans-serif;font-size:.9em;text-align:center;margin-bottom:12px;outline:none;transition:border-color .2s}
+.auth-box input[type=email]:focus,.auth-box input[type=password]:focus{border-color:var(--neon);box-shadow:0 0 10px rgba(0,255,136,.2)}
+.auth-box input::placeholder{color:#444;font-family:'Noto Sans SC',sans-serif;font-size:.8em}
+.auth-btn-row{display:flex;gap:10px;justify-content:center;margin-bottom:12px}
+.auth-btn{flex:1;padding:12px 16px;background:transparent;border:2px solid var(--neon);border-radius:6px;color:var(--neon);font-family:'Orbitron',sans-serif;font-size:.85em;cursor:pointer;transition:all .2s}
+.auth-btn:hover{background:var(--neon);color:var(--bg)}
+.auth-btn.guest{border-color:var(--text2);color:var(--text2)}
+.auth-btn.guest:hover{background:var(--text2);color:var(--bg)}
+.auth-error{color:var(--red);font-size:.8em;margin-top:8px;min-height:20px}
+.auth-hint{font-size:.75em;color:#555;margin-top:16px;line-height:1.6}
+
+/* User Info */
+.user-info{display:flex;align-items:center;gap:10px}
+.user-info .username{color:var(--neon);font-family:'Orbitron',sans-serif;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.user-info .guest-label{color:var(--gold);font-family:'Orbitron',sans-serif;font-size:.85em}
+.user-btn{padding:6px 12px;background:rgba(0,255,136,.1);border:1px solid var(--neon);border-radius:4px;color:var(--neon);font-family:'Orbitron',sans-serif;font-size:.75em;cursor:pointer;transition:all .2s}
+.user-btn:hover{background:rgba(0,255,136,.2)}
+.user-btn.logout{border-color:var(--red);color:var(--red);background:rgba(255,68,68,.1)}
+.user-btn.logout:hover{background:rgba(255,68,68,.2)}
+
+/* Leaderboard */
+.lb-toggle{position:fixed;top:50px;right:10px;z-index:100;width:36px;height:36px;border-radius:50%;background:rgba(0,255,136,.15);border:1px solid var(--neon);color:var(--neon);font-size:1.1em;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.lb-toggle:hover{background:rgba(0,255,136,.3);box-shadow:0 0 15px rgba(0,255,136,.4)}
+.lb-panel{position:fixed;top:0;right:-420px;width:400px;height:100vh;background:rgba(10,14,23,.97);border-left:2px solid var(--neon);z-index:99;transition:right .3s cubic-bezier(.16,1,.3,1);overflow-y:auto;padding:20px 16px}
+.lb-panel.open{right:0}
+.lb-panel h2{font-family:'Orbitron',sans-serif;font-size:1em;color:var(--neon);margin-bottom:15px;text-align:center;letter-spacing:2px}
+.lb-close{position:absolute;top:15px;left:15px;width:30px;height:30px;border-radius:50%;background:rgba(255,68,68,.1);border:1px solid var(--red);color:var(--red);font-size:1em;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;z-index:1}
+.lb-close:hover{background:rgba(255,68,68,.3)}
+.lb-table{width:100%;border-collapse:collapse;font-size:.8em}
+.lb-table thead th{font-family:'Orbitron',sans-serif;font-size:.7em;color:var(--neon);text-align:left;padding:8px 6px;border-bottom:1px solid #1a2a3a;letter-spacing:1px}
+.lb-table tbody tr{border-bottom:1px solid rgba(26,42,58,.5);transition:background .2s}
+.lb-table tbody tr:hover{background:rgba(0,255,136,.05)}
+.lb-table tbody tr.me{background:rgba(0,255,136,.15)}
+.lb-table td{padding:8px 6px;color:#ccc}
+.lb-table td.rank{font-family:'Orbitron',sans-serif;color:var(--gold);font-weight:700}
+.lb-table td.score{font-family:'Orbitron',sans-serif;color:var(--neon);text-align:right}
+.lb-loading{color:#666;text-align:center;padding:40px 20px}
+.lb-empty{color:#666;text-align:center;padding:40px 20px}
+
+/* Firebase Status */
+.firebase-status{position:fixed;bottom:10px;left:10px;z-index:100;font-size:.7em;color:#444;font-family:'Orbitron',sans-serif}
+</style>
+</head>
+<body>
+<!-- Auth Overlay -->
+<div id="authOverlay">
+  <div class="auth-box">
+    <h2>SNAKE EVOLUTION</h2>
+    <div class="auth-sub">蛇之进化 - 账号登录</div>
+    <input type="email" id="authEmail" placeholder="输入邮箱地址">
+    <input type="password" id="authPassword" placeholder="输入密码">
+    <div class="auth-btn-row">
+      <button class="auth-btn" id="authLoginBtn">登录</button>
+      <button class="auth-btn" id="authRegisterBtn">注册</button>
+    </div>
+    <div class="auth-error" id="authError"></div>
+    <button class="auth-btn guest" id="authGuestBtn" style="margin-top:20px">游客模式</button>
+    <div class="auth-hint">游客模式可直接游戏，但数据仅保存在本地<br>登录后数据将同步至云端并参与排行榜</div>
+  </div>
+</div>
+
+<div class="audio-controls" id="audioControls">
+  <button class="audio-btn" id="musicToggle" title="Toggle Music">🎵</button>
+  <button class="audio-btn" id="sfxToggle" title="Toggle SFX">🔊</button>
+  <input type="range" class="audio-slider" id="volumeSlider" min="0" max="100" value="50">
+  <span class="audio-label" id="volumeLabel">50%</span>
+</div>
+<div class="game-wrapper">
+  <div class="title-bar">
+    <h1>SNAKE EVOLUTION</h1>
+    <div class="stats">
+      <span>LV <span class="val" id="uiLevel">1</span></span>
+      <span>EXP <span class="val" id="uiExp">0</span></span>
+      <span>SP <span class="val" id="uiPoints">0</span></span>
+      <span>HIGH <span class="val" id="uiHigh">0</span></span>
+    </div>
+    <div class="user-info" id="userInfo" style="display:none">
+      <span class="username" id="uiUsername"></span>
+      <button class="user-btn" id="lbOpenBtn">排行榜</button>
+      <button class="user-btn logout" id="logoutBtn">登出</button>
+    </div>
+    <div class="user-info" id="guestInfo" style="display:none">
+      <span class="guest-label">GUEST</span>
+      <button class="user-btn" id="lbOpenBtnGuest">排行榜</button>
+    </div>
+  </div>
+  <div class="main-area">
+    <div class="game-col">
+      <div class="status-bar" id="statusBar"></div>
+      <div class="canvas-wrap" id="canvasWrap">
+        <canvas id="gameCanvas" width="640" height="480"></canvas>
+        <div class="combo-popup" id="comboPopup"></div>
+        <div class="shield-flash" id="shieldFlash"></div>
+        <div class="screen-flash" id="screenFlash"></div>
+        <div class="overlay" id="startOverlay">
+          <div class="overlay-title">SNAKE EVOLUTION</div>
+          <div class="overlay-sub">蛇之进化</div>
+          <button class="btn" id="startBtn">START GAME</button>
+          <div class="instructions">
+            <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / 方向键 移动<br>
+            <kbd>P</kbd> 暂停<br>
+            <kbd>Space</kbd> 二段冲刺 (需解锁)<br>
+            <kbd>R</kbd> 时间回溯 (需解锁)<br>
+            <kbd>T</kbd> 时间扭曲 (需解锁)<br>
+            <kbd>E</kbd> 大地震慑 (需解锁)<br>
+            <kbd>F</kbd> 暴食模式 (需解锁)<br>
+            <kbd>G</kbd> 蛇王降临 (需解锁)<br>
+            鼠标点击画布 量子跃迁 (需解锁)
+          </div>
+        </div>
+        <div class="overlay hidden" id="pauseOverlay">
+          <div class="overlay-title">PAUSED</div>
+          <button class="btn" id="resumeBtn">RESUME</button>
+        </div>
+        <div class="overlay hidden" id="gameOverOverlay">
+          <div class="overlay-title">GAME OVER</div>
+          <div class="overlay-sub">最终得分</div>
+          <div class="final-score" id="finalScore">0</div>
+          <div class="exp-gained" id="expGained">+0 EXP</div>
+          <button class="btn" id="restartBtn">PLAY AGAIN</button>
+        </div>
+      </div>
+      <div class="exp-bar-wrap">
+        <div class="exp-bar" id="expBar"></div>
+        <div class="exp-text" id="expText">0 / 100</div>
+      </div>
+      <div class="controls-hint">
+        <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>/方向键 移动 | <kbd>P</kbd> 暂停 | <kbd>Space</kbd> 冲刺 | <kbd>R</kbd> 回溯 | <kbd>T</kbd> 减速 | <kbd>E</kbd> 震慑 | <kbd>F</kbd> 暴食 | <kbd>G</kbd> 蛇王 | 点击 传送
+      </div>
+    </div>
+    <div class="skill-panel" id="skillPanel">
+      <button class="skill-toggle" id="skillToggle">SKILL TREE [点击展开/收起]</button>
+      <h2>SKILL TREE - 技能树</h2>
+      <div class="skill-trees" id="skillTrees"></div>
+    </div>
+  </div>
+</div>
+<div class="mobile-controls" id="mobileControls">
+  <div class="d-pad">
+    <div class="empty"></div>
+    <button id="mUp">▲</button>
+    <div class="empty"></div>
+    <button id="mLeft">◀</button>
+    <button id="mDown">▼</button>
+    <button id="mRight">▶</button>
+  </div>
+</div>
+<script>
+// ========== AUDIO SYSTEM ==========
+let audioCtx = null;
+let musicEnabled = true;
+let sfxEnabled = true;
+let masterVolume = 0.5;
+let bgmOscillators = [];
+let bgmGain = null;
+
+function initAudio(){
+  if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+
+function playTone(freq, duration, type='sine', vol=0.3){
+  if(!sfxEnabled || !audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(vol * masterVolume, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start();
+  osc.stop(audioCtx.currentTime + duration);
+}
+
+function playSound(type){
+  if(!sfxEnabled || !audioCtx) return;
+  const now = audioCtx.currentTime;
+  
+  switch(type){
+    case 'eat': // 吃食物 - 短促上升音
+      playTone(440, 0.1, 'sine', 0.2);
+      setTimeout(()=>playTone(554, 0.1, 'sine', 0.2), 50);
+      break;
+    case 'eatSpecial': // 吃特殊食物 - 更华丽的音效
+      playTone(523, 0.1, 'sine', 0.3);
+      setTimeout(()=>playTone(659, 0.1, 'sine', 0.3), 60);
+      setTimeout(()=>playTone(784, 0.15, 'sine', 0.3), 120);
+      break;
+    case 'die': // 死亡 - 下降音
+      playTone(440, 0.2, 'sawtooth', 0.3);
+      setTimeout(()=>playTone(330, 0.3, 'sawtooth', 0.3), 100);
+      setTimeout(()=>playTone(220, 0.5, 'sawtooth', 0.3), 250);
+      break;
+    case 'levelUp': // 升级 - 上升和弦
+      playTone(523, 0.15, 'sine', 0.3);
+      setTimeout(()=>playTone(659, 0.15, 'sine', 0.3), 100);
+      setTimeout(()=>playTone(784, 0.2, 'sine', 0.3), 200);
+      setTimeout(()=>playTone(1047, 0.4, 'sine', 0.3), 300);
+      break;
+    case 'skillUnlock': // 解锁技能 - 魔法音效
+      playTone(880, 0.1, 'sine', 0.2);
+      setTimeout(()=>playTone(1109, 0.1, 'sine', 0.2), 80);
+      setTimeout(()=>playTone(1319, 0.2, 'sine', 0.25), 160);
+      break;
+    case 'ability': // 激活能力 - 强力音效
+      playTone(220, 0.1, 'square', 0.2);
+      setTimeout(()=>playTone(440, 0.2, 'square', 0.25), 50);
+      break;
+    case 'combo': // 连击 - 快速上升
+      playTone(523, 0.05, 'sine', 0.15);
+      setTimeout(()=>playTone(659, 0.05, 'sine', 0.15), 40);
+      setTimeout(()=>playTone(784, 0.05, 'sine', 0.15), 80);
+      setTimeout(()=>playTone(1047, 0.1, 'sine', 0.2), 120);
+      break;
+    case 'shield': // 护盾触发 - 金属音效
+      playTone(880, 0.3, 'square', 0.2);
+      playTone(1109, 0.3, 'square', 0.15);
+      break;
+    case 'click': // 点击按钮 - 短促音
+      playTone(800, 0.03, 'sine', 0.1);
+      break;
+  }
+}
+
+// 背景音乐 - 简单的循环旋律
+function startBGM(){
+  if(!musicEnabled || !audioCtx) return;
+  stopBGM();
+  
+  const baseFreq = 110; // A2
+  const notes = [0, 4, 7, 12, 7, 4, 0, -5]; // 简单的和弦进行
+  let noteIndex = 0;
+  
+  function playNote(){
+    if(!musicEnabled || !audioCtx) return;
+    
+    const freq = baseFreq * Math.pow(2, notes[noteIndex]/12);
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    
+    osc.type = 'triangle';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.05 * masterVolume, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+    
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.4);
+    bgmOscillators.push(osc);
+    
+    noteIndex = (noteIndex + 1) % notes.length;
+    setTimeout(playNote, 500);
+  }
+  
+  playNote();
+}
+
+function stopBGM(){
+  bgmOscillators.forEach(osc=>{try{osc.stop()}catch(e){}});
+  bgmOscillators = [];
+}
+
+// UI事件监听
+document.addEventListener('DOMContentLoaded',()=>{
+  const musicBtn = document.getElementById('musicToggle');
+  const sfxBtn = document.getElementById('sfxToggle');
+  const volSlider = document.getElementById('volumeSlider');
+  const volLabel = document.getElementById('volumeLabel');
+  
+  if(musicBtn) musicBtn.addEventListener('click',()=>{
+    musicEnabled = !musicEnabled;
+    musicBtn.classList.toggle('muted', !musicEnabled);
+    musicBtn.textContent = musicEnabled ? '🎵' : '🔇';
+    if(musicEnabled) startBGM(); else stopBGM();
+    playSound('click');
+  });
+  
+  if(sfxBtn) sfxBtn.addEventListener('click',()=>{
+    sfxEnabled = !sfxEnabled;
+    sfxBtn.classList.toggle('muted', !sfxEnabled);
+    sfxBtn.textContent = sfxEnabled ? '🔊' : '🔇';
+    playSound('click');
+  });
+  
+  if(volSlider) volSlider.addEventListener('input',(e)=>{
+    masterVolume = parseInt(e.target.value) / 100;
+    volLabel.textContent = e.target.value + '%';
+  });
+  
+  // 首次点击页面初始化音频
+  document.addEventListener('click',()=>{
+    if(!audioCtx){
+      initAudio();
+      startBGM();
+    }else if(audioCtx.state === 'suspended'){
+      audioCtx.resume();
+    }
+  }, {once:true});
+});
+
+// ========== GAME CONSTANTS ==========
+const COLS = 32, ROWS = 24, CELL = 20;
+const W = COLS * CELL, H = ROWS * CELL;
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const canvasWrap = document.getElementById('canvasWrap');
+
+// ========== FOOD TYPES ==========
+const FOOD_TYPES = [
+  { id:'normal', emoji:'🍎', color:'#00ff88', glow:'rgba(0,255,136,.4)', score:10, grow:1, weight:50, name:'普通果实' },
+  { id:'beam', emoji:'⚡', color:'#00aaff', glow:'rgba(0,170,255,.4)', score:20, grow:1, weight:20, name:'能量核心', ability:'beam', dur:3000 },
+  { id:'burn', emoji:'🔥', color:'#ff4444', glow:'rgba(255,68,68,.4)', score:15, grow:1, weight:12, name:'火焰种子', ability:'burn', dur:5000 },
+  { id:'ghost', emoji:'👻', color:'#aa44ff', glow:'rgba(170,68,255,.4)', score:15, grow:1, weight:10, name:'幽灵果', ability:'ghost', dur:5000 },
+  { id:'shield', emoji:'🛡️', color:'#ffaa00', glow:'rgba(255,170,0,.4)', score:25, grow:1, weight:6, name:'守护结晶', ability:'shield' },
+  { id:'chaos', emoji:'💀', color:'#ffffff', glow:'rgba(255,255,255,.4)', score:50, grow:1, weight:2, name:'混沌之果', ability:'chaos', dur:8000 }
+];
+const TOTAL_WEIGHT = FOOD_TYPES.reduce((s,f)=>s+f.weight,0);
+
+// ========== SKILL DEFINITIONS ==========
+const SKILL_TREES = [
+  { id:'survival', name:'生存系', icon:'🌿', color:'var(--neon)', skills:[
+    { id:'rebirth', name:'重生之鳞', desc:'死亡自动复活，保留一半长度', cost:1, icon:'🐉' },
+    { id:'split', name:'蛇身分裂', desc:'被撞身体节段分裂成小蛇自动觅食', cost:2, icon:'✂️' },
+    { id:'rewind', name:'时间回溯', desc:'按R回溯3秒，冷却20秒', cost:3, icon:'⏪' },
+    { id:'immortal', name:'不死金身', desc:'3条命，用完一条蛇变短继续', cost:4, icon:'👑' }
+  ]},
+  { id:'speed', name:'速度系', icon:'⚡', color:'var(--blue)', skills:[
+    { id:'dash', name:'二段冲刺', desc:'按空格瞬移5格，路径食物吸入，冷却8秒', cost:1, icon:'💨' },
+    { id:'afterimage', name:'残影分身', desc:'移动留下残影也能吃食物', cost:2, icon:'👤' },
+    { id:'slow', name:'时间扭曲', desc:'按T全场减速50%持续5秒，冷却15秒', cost:3, icon:'🕐' },
+    { id:'teleport', name:'量子跃迁', desc:'鼠标点击传送蛇头，冷却12秒', cost:4, icon:'🌀' }
+  ]},
+  { id:'power', name:'力量系', icon:'🔥', color:'var(--red)', skills:[
+    { id:'attract', name:'吞噬领域', desc:'蛇头2格范围自动吸引食物', cost:1, icon:'🧲' },
+    { id:'quake', name:'大地震慑', desc:'按E震晕全场食物3秒并震碎障碍，冷却12秒', cost:2, icon:'💥' },
+    { id:'glutton', name:'暴食模式', desc:'按F速度x2+无敌+得分x3持续5秒，冷却20秒', cost:3, icon:'😋' },
+    { id:'king', name:'蛇王降临', desc:'按G变3倍粗巨蛇碾压一切8秒，冷却30秒', cost:4, icon:'🐍' }
+  ]}
+];
+
+// ========== LEVEL THRESHOLDS ==========
+const LEVEL_EXP = [0,100,250,500,800,1200,1700,2300,3000,3800,4700,5700,6800,8000,9500,11000,13000,15000,17500,20000];
+
+// ========== PERSISTENCE ==========
+function loadData(){
+  try{
+    const skillsStr = localStorage.getItem('snakeEvolution_skills');
+    let skills = [];
+    if(skillsStr){
+      try{ skills = JSON.parse(skillsStr); }catch(e){ skills = []; }
+    }
+    if(!Array.isArray(skills)) skills = [];
+    return {
+      exp: parseInt(localStorage.getItem('snakeEvolution_exp'))||0,
+      skills: skills,
+      points: parseInt(localStorage.getItem('snakeEvolution_points'))||0,
+      highScore: parseInt(localStorage.getItem('snakeEvolution_highScore'))||0
+    };
+  }catch(e){ return {exp:0,skills:[],points:0,highScore:0}; }
+}
+function saveData(d){
+  localStorage.setItem('snakeEvolution_exp', String(parseInt(d.exp)||0));
+  localStorage.setItem('snakeEvolution_skills', JSON.stringify(d.skills||[]));
+  localStorage.setItem('snakeEvolution_points', String(parseInt(d.points)||0));
+  localStorage.setItem('snakeEvolution_highScore', String(parseInt(d.highScore)||0));
+}
+function getLevel(exp){
+  for(let i=LEVEL_EXP.length-1;i>=0;i--) if(exp>=LEVEL_EXP[i]) return i+1;
+  return 1;
+}
+function getExpForNext(level){
+  return level<LEVEL_EXP.length?LEVEL_EXP[level]:LEVEL_EXP[LEVEL_EXP.length-1]+(level-LEVEL_EXP.length+1)*2500;
+}
+function getExpForCur(level){
+  return level>1?LEVEL_EXP[level-1]:0;
+}
+
+// ========== GAME STATE ==========
+let G = {};
+let persist = loadData();
+let particles = [];
+let bgParticles = [];
+let floatingTexts = [];
+let miniSnakes = [];
+let afterimages = [];
+let venomTrails = [];
+let burnTrails = [];
+let frameCount = 0;
+let lastTime = 0;
+let accumulator = 0;
+const BASE_TICK = 120; // ms per game tick
+
+function initBgParticles(){
+  bgParticles = [];
+  for(let i=0;i<50;i++){
+    bgParticles.push({
+      x:Math.random()*W, y:Math.random()*H,
+      vx:(Math.random()-.5)*.3, vy:(Math.random()-.5)*.3,
+      r:Math.random()*2+.5, a:Math.random()*.3+.1,
+      color: ['#00ff88','#00aaff','#aa44ff','#ffaa00'][Math.floor(Math.random()*4)]
+    });
+  }
+}
+
+function initGame(){
+  const midX = Math.floor(COLS/2), midY = Math.floor(ROWS/2);
+  G = {
+    snake: [{x:midX,y:midY},{x:midX-1,y:midY},{x:midX-2,y:midY},{x:midX-3,y:midY}],
+    dir: {x:1,y:0}, nextDir: {x:1,y:0},
+    foods: [],
+    score: 0,
+    combo: 0, comboTimer: 0, comboMult: 1,
+    abilities: {}, // active abilities with end times
+    cooldowns: {}, // skill cooldowns
+    shieldActive: false,
+    lives: hasSkill('immortal')?3:1,
+    history: [], // for rewind
+    historyTimer: 0,
+    paused: false,
+    running: false,
+    gameOver: false,
+    tickRate: BASE_TICK,
+    speedMult: 1,
+    scoreMult: 1,
+    invincible: false,
+    kingMode: false,
+    slowMode: false,
+    chaosAbilities: [],
+    growQueue: 0,
+    directionChanged: false,
+    foodStunned: false,
+    foodStunEnd: 0
+  };
+  particles = [];
+  floatingTexts = [];
+  miniSnakes = [];
+  afterimages = [];
+  venomTrails = [];
+  burnTrails = [];
+  spawnFood();
+  spawnFood();
+  spawnFood();
+}
+
+// ========== SKILL HELPERS ==========
+function hasSkill(id){ return persist && persist.skills && Array.isArray(persist.skills) && persist.skills.includes(id); }
+function canUnlock(skill){
+  if(!skill || !skill.id) return false;
+  if(!persist || !persist.skills || !Array.isArray(persist.skills)) return false;
+  if(persist.skills.includes(skill.id)) return false;
+  const pts = parseInt(persist.points) || 0;
+  const cost = parseInt(skill.cost) || 0;
+  if(pts < cost) return false;
+  return true;
+}
+function unlockSkill(skill){
+  if(!canUnlock(skill)) return;
+  if(!persist) return;
+  persist.points = (persist.points || 0) - skill.cost;
+  if(!persist.skills) persist.skills = [];
+  persist.skills.push(skill.id);
+  saveData(persist);
+  playSound('skillUnlock');
+  renderSkillTree();
+  updateUI();
+}
+
+// ========== FOOD SPAWNING ==========
+function pickFoodType(){
+  let r = Math.random()*TOTAL_WEIGHT, cum=0;
+  for(const f of FOOD_TYPES){ cum+=f.weight; if(r<=cum) return f; }
+  return FOOD_TYPES[0];
+}
+function spawnFood(){
+  let attempts = 0;
+  while(attempts<100){
+    const x = Math.floor(Math.random()*COLS);
+    const y = Math.floor(Math.random()*ROWS);
+    if(G.snake.some(s=>s.x===x&&s.y===y)) { attempts++; continue; }
+    if(G.foods.some(f=>f.x===x&&f.y===y)) { attempts++; continue; }
+    if(venomTrails.some(v=>v.x===x&&v.y===y)) { attempts++; continue; }
+    G.foods.push({ x, y, type: pickFoodType(), pulse: Math.random()*Math.PI*2, stunned: false });
+    return;
+  }
+}
+
+// ========== ABILITY SYSTEM ==========
+function activateAbility(type, dur){
+  G.abilities[type] = Date.now() + dur;
+}
+function hasAbility(type){ return G && G.abilities && G.abilities[type] && Date.now() < G.abilities[type]; }
+function getAbilityRemaining(type){ return G && G.abilities && G.abilities[type] ? Math.max(0, G.abilities[type]-Date.now()) : 0; }
+function clearAbility(type){ delete G.abilities[type]; }
+
+function applyFoodAbility(food){
+  if(!food.type.ability) return;
+  const ft = food.type;
+  if(ft.id === 'shield'){
+    G.shieldActive = true;
+    showShieldFlash();
+    return;
+  }
+  if(ft.id === 'chaos'){
+    // Pick 2 random strong abilities
+    const strong = ['beam','burn','ghost'];
+    const picks = [];
+    while(picks.length<2){
+      const p = strong[Math.floor(Math.random()*strong.length)];
+      if(!picks.includes(p)) picks.push(p);
+    }
+    picks.forEach(a=>activateAbility(a, ft.dur));
+    G.chaosAbilities = picks;
+    return;
+  }
+  activateAbility(ft.ability, ft.dur);
+}
+
+// ========== COMBO SYSTEM ==========
+function addCombo(){
+  G.combo++;
+  G.comboTimer = Date.now() + 3000;
+  G.comboMult = Math.min(5, Math.floor(G.combo/2)+1);
+  if(G.combo >= 10){
+    showComboText('UNSTOPPABLE!');
+    shakeCanvas('heavy');
+    spawnExplosion(W/2, H/2, 30, ['#ff4444','#ffaa00','#ff0064']);
+    playSound('combo');
+  } else if(G.combo >= 6){
+    showComboText('AMAZING!');
+    shakeCanvas('heavy');
+    spawnExplosion(W/2, H/2, 20, ['#ffaa00','#00ff88']);
+    playSound('combo');
+  } else if(G.combo >= 3){
+    showComboText('GREAT!');
+    shakeCanvas('light');
+    playSound('combo');
+  }
+}
+function checkComboReset(){
+  if(G.combo > 0 && Date.now() > G.comboTimer){
+    G.combo = 0;
+    G.comboMult = 1;
+  }
+}
+
+// ========== PARTICLE SYSTEM ==========
+function spawnParticle(x,y,color,vx,vy,life,size){
+  particles.push({x,y,color,vx:vx||(Math.random()-.5)*3,vy:vy||(Math.random()-.5)*3,life,maxLife:life,size:size||3});
+}
+function spawnExplosion(x,y,count,colors){
+  for(let i=0;i<count;i++){
+    const a = Math.random()*Math.PI*2;
+    const sp = Math.random()*4+1;
+    spawnParticle(x,y,colors[Math.floor(Math.random()*colors.length)],Math.cos(a)*sp,Math.sin(a)*sp,30+Math.random()*20,Math.random()*4+2);
+  }
+}
+function spawnFloatingText(x,y,text,color){
+  floatingTexts.push({x,y,text,color,life:60,maxLife:60});
+}
+function updateParticles(){
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i];
+    p.x+=p.vx; p.y+=p.vy; p.vx*=.96; p.vy*=.96; p.life--;
+    if(p.life<=0) particles.splice(i,1);
+  }
+  for(let i=floatingTexts.length-1;i>=0;i--){
+    const f=floatingTexts[i];
+    f.y-=1; f.life--;
+    if(f.life<=0) floatingTexts.splice(i,1);
+  }
+}
+
+// ========== MINI SNAKES (split skill) ==========
+function spawnMiniSnake(startX, startY, len){
+  const dirs=[{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}];
+  const d = dirs[Math.floor(Math.random()*4)];
+  const segs=[];
+  for(let i=0;i<len;i++) segs.push({x:startX-d.x*i,y:startY-d.y*i});
+  miniSnakes.push({segs,dir:d,life:300,tickCounter:0});
+}
+function updateMiniSnakes(){
+  for(let i=miniSnakes.length-1;i>=0;i--){
+    const ms=miniSnakes[i];
+    ms.life--;
+    ms.tickCounter++;
+    if(ms.tickCounter>=6){
+      ms.tickCounter=0;
+      const head=ms.segs[0];
+      const nx=head.x+ms.dir.x, ny=head.y+ms.dir.y;
+      // Random turn
+      if(Math.random()<.2){
+        const dirs=[{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}];
+        ms.dir=dirs[Math.floor(Math.random()*4)];
+      }
+      // Wrap
+      const wx=((nx%COLS)+COLS)%COLS, wy=((ny%ROWS)+ROWS)%ROWS;
+      ms.segs.unshift({x:wx,y:wy});
+      ms.segs.pop();
+      // Eat food
+      for(let j=G.foods.length-1;j>=0;j--){
+        if(G.foods[j].x===wx&&G.foods[j].y===wy){
+          const fi=G.foods.splice(j,1)[0];
+          G.score += fi.type.score;
+          spawnFood();
+          spawnExplosion(wx*CELL+CELL/2,wy*CELL+CELL/2,8,[fi.type.color]);
+          break;
+        }
+      }
+    }
+    if(ms.life<=0) miniSnakes.splice(i,1);
+  }
+}
+
+// ========== AFTERIMAGES ==========
+function addAfterimage(){
+  if(!hasSkill('afterimage')) return;
+  if(G.snake.length<2) return;
+  afterimages.push({segs:G.snake.map(s=>({...s})),life:20});
+}
+function updateAfterimages(){
+  for(let i=afterimages.length-1;i>=0;i--){
+    afterimages[i].life--;
+    if(afterimages[i].life<=0) afterimages.splice(i,1);
+  }
+}
+
+// ========== HISTORY (rewind) ==========
+function recordHistory(){
+  if(!hasSkill('rewind')) return;
+  G.history.push({
+    snake: G.snake.map(s=>({...s})),
+    dir: {...G.dir},
+    foods: G.foods.map(f=>({...f})),
+    score: G.score,
+    venomTrails: venomTrails.map(v=>({...v})),
+    burnTrails: burnTrails.map(b=>({...b}))
+  });
+  // Keep last ~25 records (3 seconds at ~8 ticks/sec)
+  if(G.history.length>25) G.history.shift();
+}
+function doRewind(){
+  if(!hasSkill('rewind')) return;
+  if(G.cooldowns.rewind && Date.now()<G.cooldowns.rewind) return;
+  if(G.history.length<5) return;
+  playSound('ability');
+  const snap = G.history.pop();
+  G.snake = snap.snake;
+  G.dir = snap.dir;
+  G.nextDir = {...snap.dir};
+  G.foods = snap.foods;
+  G.score = snap.score;
+  venomTrails = snap.venomTrails;
+  burnTrails = snap.burnTrails;
+  G.cooldowns.rewind = Date.now() + 20000;
+  spawnExplosion(W/2,H/2,20,['#00ff88','#00aaff']);
+}
+
+// ========== SKILL ACTIONS ==========
+function doDash(){
+  if(!hasSkill('dash')) return;
+  if(G.cooldowns.dash && Date.now()<G.cooldowns.dash) return;
+  playSound('ability');
+  const head = G.snake[0];
+  const nx = head.x+G.dir.x*5, ny = head.y+G.dir.y*5;
+  // Collect food along path
+  for(let i=1;i<=5;i++){
+    const cx=head.x+G.dir.x*i, cy=head.y+G.dir.y*i;
+    for(let j=G.foods.length-1;j>=0;j--){
+      if(G.foods[j].x===cx&&G.foods[j].y===cy){
+        const fi=G.foods.splice(j,1)[0];
+        G.score += fi.type.score * G.comboMult * G.scoreMult;
+        G.growQueue += fi.type.grow;
+        addCombo();
+        applyFoodAbility(fi);
+        spawnFloatingText(cx*CELL+CELL/2,cy*CELL,'+'+fi.type.score,fi.type.color);
+        spawnExplosion(cx*CELL+CELL/2,cy*CELL+CELL/2,10,[fi.type.color]);
+        spawnFood();
+      }
+    }
+  }
+  // Move head
+  const wx=((nx%COLS)+COLS)%COLS, wy=((ny%ROWS)+ROWS)%ROWS;
+  G.snake.unshift({x:wx,y:wy});
+  G.snake.pop();
+  G.cooldowns.dash = Date.now() + 8000;
+  spawnExplosion(wx*CELL+CELL/2,wy*CELL+CELL/2,15,['#00aaff','#00ff88']);
+}
+
+function doSlowTime(){
+  if(!hasSkill('slow')) return;
+  if(G.cooldowns.slow && Date.now()<G.cooldowns.slow) return;
+  playSound('ability');
+  G.slowMode = true;
+  activateAbility('slow', 5000);
+  G.cooldowns.slow = Date.now() + 15000;
+}
+
+function doQuake(){
+  if(!hasSkill('quake')) return;
+  if(G.cooldowns.quake && Date.now()<G.cooldowns.quake) return;
+  playSound('ability');
+  // Stun all food for 3 seconds
+  G.foodStunned = true;
+  G.foodStunEnd = Date.now() + 3000;
+  // Clear venom trails (shatter obstacles)
+  if(venomTrails.length > 0){
+    venomTrails.forEach(v=>{
+      spawnExplosion(v.x*CELL+CELL/2,v.y*CELL+CELL/2,5,['#ff0064']);
+    });
+    venomTrails = [];
+  }
+  // Screen shake effect
+  shakeCanvas('heavy');
+  spawnExplosion(W/2,H/2,30,['#ff4444','#ffaa00','#ffffff']);
+  G.cooldowns.quake = Date.now() + 12000;
+}
+
+function doGlutton(){
+  if(!hasSkill('glutton')) return;
+  if(G.cooldowns.glutton && Date.now()<G.cooldowns.glutton) return;
+  playSound('ability');
+  G.invincible = true;
+  G.speedMult = 2;
+  G.scoreMult = 3;
+  activateAbility('glutton', 5000);
+  G.cooldowns.glutton = Date.now() + 20000;
+}
+
+function doKing(){
+  if(!hasSkill('king')) return;
+  if(G.cooldowns.king && Date.now()<G.cooldowns.king) return;
+  playSound('ability');
+  G.kingMode = true;
+  G.invincible = true;
+  activateAbility('king', 8000);
+  G.cooldowns.king = Date.now() + 30000;
+}
+
+function doTeleport(tx,ty){
+  if(!hasSkill('teleport')) return;
+  if(G.cooldowns.teleport && Date.now()<G.cooldowns.teleport) return;
+  playSound('ability');
+  const gx=Math.floor(tx/CELL), gy=Math.floor(ty/CELL);
+  if(gx<0||gx>=COLS||gy<0||gy>=ROWS) return;
+  if(G.snake.some(s=>s.x===gx&&s.y===gy)) return;
+  spawnExplosion(G.snake[0].x*CELL+CELL/2,G.snake[0].y*CELL+CELL/2,15,['#aa44ff']);
+  G.snake[0]={x:gx,y:gy};
+  spawnExplosion(gx*CELL+CELL/2,gy*CELL+CELL/2,15,['#aa44ff']);
+  G.cooldowns.teleport = Date.now() + 12000;
+}
+
+// ========== GAME LOGIC ==========
+function gameTick(){
+  if(G.paused||G.gameOver||!G.running) return;
+  G.directionChanged = false;
+  recordHistory();
+  checkComboReset();
+
+  // Check food stun timeout
+  if(G.foodStunned && Date.now() > G.foodStunEnd){
+    G.foodStunned = false;
+  }
+
+  // Apply direction
+  G.dir = {...G.nextDir};
+
+  const head = G.snake[0];
+  let nx = head.x + G.dir.x;
+  let ny = head.y + G.dir.y;
+
+  // Ghost mode: wrap around
+  if(hasAbility('ghost')){
+    nx = ((nx%COLS)+COLS)%COLS;
+    ny = ((ny%ROWS)+ROWS)%ROWS;
+  }
+
+  // Wall collision
+  if(nx<0||nx>=COLS||ny<0||ny>=ROWS){
+    if(!hasAbility('ghost') && !G.invincible){
+      handleDeath(); return;
+    } else {
+      nx = ((nx%COLS)+COLS)%COLS;
+      ny = ((ny%ROWS)+ROWS)%ROWS;
+    }
+  }
+
+  // Self collision
+  if(G.snake.some((s,i)=>i>0&&s.x===nx&&s.y===ny)){
+    if(!hasAbility('ghost') && !G.invincible){
+      if(hasSkill('split')){
+        // Split: remove the collided segment, spawn mini snake
+        const idx = G.snake.findIndex((s,i)=>i>0&&s.x===nx&&s.y===ny);
+        if(idx>0){
+          const splitSegs = G.snake.splice(idx);
+          spawnMiniSnake(splitSegs[0].x, splitSegs[0].y, Math.min(splitSegs.length,5));
+          spawnExplosion(nx*CELL+CELL/2,ny*CELL+CELL/2,15,['#00ff88']);
+        }
+        return; // survive
+      }
+      handleDeath(); return;
+    }
+  }
+
+  // Venom collision
+  if(venomTrails.some(v=>v.x===nx&&v.y===ny)&&!G.invincible){
+    handleDeath(); return;
+  }
+
+  // Burn trail damage (only if not invincible)
+  // (burn trails are visual, damage is from fire ability on other entities)
+
+  // Attract skill
+  if(hasSkill('attract')){
+    for(let fi=G.foods.length-1;fi>=0;fi--){
+      const f=G.foods[fi];
+      const dx=nx-f.x, dy=ny-f.y;
+      if(Math.abs(dx)<=2&&Math.abs(dy)<=2&&(dx!==0||dy!==0)){
+        // Move food toward snake head
+        const mx = f.x + Math.sign(dx), my = f.y + Math.sign(dy);
+        if(!G.snake.some(s=>s.x===mx&&s.y===my)){
+          f.x=mx; f.y=my;
+        }
+      }
+    }
+  }
+
+  // Move snake
+  G.snake.unshift({x:nx,y:ny});
+  addAfterimage();
+
+  // Check food
+  let ate = false;
+  for(let i=G.foods.length-1;i>=0;i--){
+    const f=G.foods[i];
+    if(f.x===nx&&f.y===ny){
+      const pts = f.type.score * G.comboMult * G.scoreMult;
+      G.score += pts;
+      G.growQueue += f.type.grow;
+      addCombo();
+      // Play sound based on food type
+      if(f.type.id === 'normal'){
+        playSound('eat');
+      } else {
+        playSound('eatSpecial');
+      }
+      applyFoodAbility(f);
+      spawnFloatingText(nx*CELL+CELL/2,ny*CELL,'+'+pts,f.type.color);
+      spawnExplosion(nx*CELL+CELL/2,ny*CELL+CELL/2,12,[f.type.color,'#ffffff']);
+      G.foods.splice(i,1);
+      spawnFood();
+      ate = true;
+      // Beam mode: absorb nearby food
+      if(hasAbility('beam')){
+        for(let j=G.foods.length-1;j>=0;j--){
+          const f2=G.foods[j];
+          const d=Math.abs(f2.x-nx)+Math.abs(f2.y-ny);
+          if(d<=3){
+            const pts2=f2.type.score*G.comboMult*G.scoreMult;
+            G.score+=pts2;
+            G.growQueue+=f2.type.grow;
+            spawnFloatingText(f2.x*CELL+CELL/2,f2.y*CELL,'+'+pts2,f2.type.color);
+            spawnExplosion(f2.x*CELL+CELL/2,f2.y*CELL+CELL/2,8,[f2.type.color]);
+            G.foods.splice(j,1);
+            spawnFood();
+          }
+        }
+      }
+      break;
+    }
+  }
+
+  // Afterimage eating
+  if(!ate && hasSkill('afterimage')){
+    for(const ai of afterimages){
+      for(let i=G.foods.length-1;i>=0;i--){
+        const f=G.foods[i];
+        if(ai.segs.some(s=>s.x===f.x&&s.y===f.y)){
+          const pts=f.type.score*G.comboMult*G.scoreMult;
+          G.score+=pts;
+          G.growQueue+=f.type.grow;
+          spawnFloatingText(f.x*CELL+CELL/2,f.y*CELL,'+'+pts,'#00aaff');
+          spawnExplosion(f.x*CELL+CELL/2,f.y*CELL+CELL/2,8,['#00aaff']);
+          G.foods.splice(i,1);
+          spawnFood();
+        }
+      }
+    }
+  }
+
+  // Grow or trim
+  if(G.growQueue>0){
+    G.growQueue--;
+  } else {
+    G.snake.pop();
+  }
+
+  // Burn mode: leave fire trails
+  if(hasAbility('burn')){
+    burnTrails.push({x:nx,y:ny,life:120});
+  }
+
+  // King mode: crush venom trails
+  if(G.kingMode){
+    for(let i=venomTrails.length-1;i>=0;i--){
+      if(venomTrails[i].x===nx&&venomTrails[i].y===ny){
+        venomTrails.splice(i,1);
+        spawnExplosion(nx*CELL+CELL/2,ny*CELL+CELL/2,5,['#ff0064']);
+      }
+    }
+  }
+
+  // Update trails
+  for(let i=burnTrails.length-1;i>=0;i--){
+    burnTrails[i].life--;
+    if(burnTrails[i].life<=0) burnTrails.splice(i,1);
+  }
+  for(let i=venomTrails.length-1;i>=0;i--){
+    venomTrails[i].life--;
+    if(venomTrails[i].life<=0) venomTrails.splice(i,1);
+  }
+
+  // Check ability timeouts
+  for(const key of Object.keys(G.abilities)){
+    if(Date.now()>=G.abilities[key]){
+      clearAbility(key);
+      if(key==='glutton'){G.invincible=false;G.speedMult=1;G.scoreMult=1;}
+      if(key==='king'){G.kingMode=false;G.invincible=false;}
+      if(key==='slow'){G.slowMode=false;}
+      if(key==='chaos'){G.chaosAbilities=[];}
+    }
+  }
+
+  // Ensure minimum food
+  while(G.foods.length<3) spawnFood();
+}
+
+function handleDeath(){
+  if(G.shieldActive){
+    G.shieldActive = false;
+    showShieldFlash();
+    shakeCanvas('heavy');
+    spawnExplosion(W/2,H/2,40,['#ffaa00','#ff8800','#ffffff']);
+    playSound('shield');
+    // Remove nearby obstacles
+    venomTrails.length = 0;
+    return;
+  }
+  if(G.invincible) return;
+
+  G.lives--;
+  if(hasSkill('rebirth') && G.lives > 0){
+    // Rebirth: keep half length
+    const halfLen = Math.max(2, Math.floor(G.snake.length/2));
+    G.snake = G.snake.slice(0, halfLen);
+    // Reset position to center area
+    const cx=Math.floor(COLS/2), cy=Math.floor(ROWS/2);
+    G.snake.forEach((s,i)=>{s.x=cx-i;s.y=cy;});
+    G.dir={x:1,y:0}; G.nextDir={x:1,y:0};
+    // Clear abilities
+    G.abilities={}; G.invincible=false; G.kingMode=false; G.slowMode=false; G.speedMult=1; G.scoreMult=1;
+    spawnExplosion(W/2,H/2,30,['#00ff88','#ffffff']);
+    shakeCanvas('heavy');
+    return;
+  }
+  if(hasSkill('immortal') && G.lives > 0){
+    const newLen = Math.max(3, Math.floor(G.snake.length*0.6));
+    G.snake = G.snake.slice(0, newLen);
+    const cx=Math.floor(COLS/2), cy=Math.floor(ROWS/2);
+    G.snake.forEach((s,i)=>{s.x=cx-i;s.y=cy;});
+    G.dir={x:1,y:0}; G.nextDir={x:1,y:0};
+    G.abilities={}; G.invincible=false; G.kingMode=false; G.slowMode=false; G.speedMult=1; G.scoreMult=1;
+    spawnExplosion(W/2,H/2,25,['#ffaa00','#00ff88']);
+    shakeCanvas('heavy');
+    return;
+  }
+
+  // Game over
+  G.gameOver = true;
+  G.running = false;
+  playSound('die');
+  endGame();
+}
+
+function endGame(){
+  const expGained = G.score;
+  persist.exp += expGained;
+  if(G.score > persist.highScore) persist.highScore = G.score;
+  // Check level ups
+  const oldLevel = getLevel(persist.exp - expGained);
+  const newLevel = getLevel(persist.exp);
+  if(newLevel > oldLevel){
+    persist.points += (newLevel - oldLevel);
+    playSound('levelUp');
+  }
+  saveData(persist);
+  document.getElementById('finalScore').textContent = G.score;
+  document.getElementById('expGained').textContent = '+' + expGained + ' EXP' + (newLevel>oldLevel?' (LEVEL UP! +'+(newLevel-oldLevel)+' SP)':'');
+  document.getElementById('gameOverOverlay').classList.remove('hidden');
+  updateUI();
+  
+  // Save to Firebase if logged in
+  if(typeof firebase !== 'undefined' && firebase.auth().currentUser){
+    saveToFirebase();
+  }
+}
+
+// ========== RENDERING ==========
+function render(){
+  ctx.clearRect(0,0,W,H);
+
+  // Background
+  ctx.fillStyle = '#0a0e17';
+  ctx.fillRect(0,0,W,H);
+
+  // Grid lines
+  ctx.strokeStyle = 'rgba(0,255,136,0.04)';
+  ctx.lineWidth = 0.5;
+  for(let x=0;x<=COLS;x++){
+    ctx.beginPath(); ctx.moveTo(x*CELL,0); ctx.lineTo(x*CELL,H); ctx.stroke();
+  }
+  for(let y=0;y<=ROWS;y++){
+    ctx.beginPath(); ctx.moveTo(0,y*CELL); ctx.lineTo(W,y*CELL); ctx.stroke();
+  }
+
+  // Background particles
+  for(const p of bgParticles){
+    p.x+=p.vx; p.y+=p.vy;
+    if(p.x<0)p.x=W; if(p.x>W)p.x=0;
+    if(p.y<0)p.y=H; if(p.y>H)p.y=0;
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    ctx.fillStyle=p.color;
+    ctx.globalAlpha=p.a;
+    ctx.fill();
+    ctx.globalAlpha=1;
+  }
+
+  // Burn trails
+  for(const b of burnTrails){
+    const a = b.life/120;
+    ctx.fillStyle = `rgba(255,68,0,${a*0.5})`;
+    ctx.fillRect(b.x*CELL+2,b.y*CELL+2,CELL-4,CELL-4);
+    // Fire particles
+    if(frameCount%3===0){
+      spawnParticle(b.x*CELL+Math.random()*CELL,b.y*CELL,`rgba(255,${Math.floor(Math.random()*150)},0,${a})`,(Math.random()-.5)*1,-Math.random()*2,15,2);
+    }
+  }
+
+  // Venom trails
+  for(const v of venomTrails){
+    const a = v.life/200;
+    ctx.fillStyle = `rgba(100,0,200,${a*0.6})`;
+    ctx.fillRect(v.x*CELL+1,v.y*CELL+1,CELL-2,CELL-2);
+    ctx.strokeStyle = `rgba(150,0,255,${a*0.8})`;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(v.x*CELL+1,v.y*CELL+1,CELL-2,CELL-2);
+  }
+
+  // Afterimages
+  for(const ai of afterimages){
+    const a = ai.life/20 * 0.3;
+    for(let i=0;i<ai.segs.length;i++){
+      const s=ai.segs[i];
+      ctx.fillStyle = `rgba(0,170,255,${a})`;
+      ctx.fillRect(s.x*CELL+2,s.y*CELL+2,CELL-4,CELL-4);
+    }
+  }
+
+  // Mini snakes
+  for(const ms of miniSnakes){
+    const a = ms.life/300;
+    for(let i=0;i<ms.segs.length;i++){
+      const s=ms.segs[i];
+      ctx.fillStyle = `rgba(0,255,136,${a*0.6})`;
+      ctx.fillRect(s.x*CELL+4,s.y*CELL+4,CELL-8,CELL-8);
+    }
+  }
+
+  // Food
+  if(!G || !G.foods) return;
+  for(const f of G.foods){
+    // Check if food is stunned
+    const isStunned = G.foodStunned && Date.now() < G.foodStunEnd;
+    f.pulse += isStunned ? 0.02 : 0.08;
+    const px = f.x*CELL+CELL/2, py = f.y*CELL+CELL/2;
+    const pulseR = isStunned ? 0.8 : (1 + Math.sin(f.pulse)*0.15);
+    
+    // Stunned effect (zzz)
+    if(isStunned){
+      ctx.fillStyle = '#888';
+      ctx.font = '10px Orbitron';
+      ctx.textAlign = 'center';
+      ctx.fillText('zzz', px, py - 15);
+    }
+    
+    // Glow
+    const grad = ctx.createRadialGradient(px,py,0,px,py,CELL*pulseR);
+    grad.addColorStop(0, isStunned ? 'rgba(100,100,100,.3)' : f.type.glow);
+    grad.addColorStop(1, 'transparent');
+    ctx.fillStyle = grad;
+    ctx.fillRect(px-CELL,py-CELL,CELL*2,CELL*2);
+    // Emoji
+    ctx.font = `${14*pulseR}px serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.globalAlpha = isStunned ? 0.5 : 1;
+    ctx.fillText(f.type.emoji, px, py);
+    ctx.globalAlpha = 1;
+  }
+
+  // Snake
+  const isGhost = hasAbility('ghost');
+  const isBeam = hasAbility('beam');
+  const isBurn = hasAbility('burn');
+  const isChaos = hasAbility('chaos');
+  const isKing = G.kingMode;
+  const isGlutton = hasAbility('glutton');
+
+  for(let i=G.snake.length-1;i>=0;i--){
+    const s=G.snake[i];
+    const sx=s.x*CELL, sy=s.y*CELL;
+    let color = '#00ff88';
+    let alpha = 1;
+
+    if(isChaos){
+      const hue = (frameCount*5+i*20)%360;
+      color = `hsl(${hue},100%,60%)`;
+    } else if(isBeam){
+      color = i===0?'#00ddff':'#0088cc';
+    } else if(isBurn){
+      color = i===0?'#ff6600':'#cc3300';
+    } else if(isGlutton){
+      color = i===0?'#ffdd00':'#ffaa00';
+    } else if(isKing){
+      color = i===0?'#ff0064':'#cc0050';
+    } else {
+      const g = Math.floor(255 - (i/G.snake.length)*100);
+      color = `rgb(0,${g},${Math.floor(g*0.5)})`;
+    }
+
+    if(isGhost) alpha = 0.4 + Math.sin(frameCount*0.2+i)*0.2;
+
+    ctx.globalAlpha = alpha;
+
+    if(isKing){
+      // 3x thick
+      const kx=sx-CELL, ky=sy-CELL/2;
+      ctx.fillStyle = color;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 15;
+      ctx.fillRect(kx+2,ky+2,CELL*3-4,CELL*2-4);
+      ctx.shadowBlur = 0;
+    } else {
+      ctx.fillStyle = color;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = i===0?12:6;
+      ctx.fillRect(sx+1,sy+1,CELL-2,CELL-2);
+      ctx.shadowBlur = 0;
+      // Head eyes
+      if(i===0){
+        ctx.fillStyle = '#000';
+        const ex1 = sx+CELL*0.3+G.dir.x*3, ey1 = sy+CELL*0.3+G.dir.y*3;
+        const ex2 = sx+CELL*0.7+G.dir.x*3, ey2 = sy+CELL*0.7+G.dir.y*3;
+        ctx.fillRect(ex1,ey1,3,3);
+        ctx.fillRect(ex2,ey2,3,3);
+      }
+    }
+    ctx.globalAlpha = 1;
+
+    // Trail particles for beam/burn
+    if(i===0 && (isBeam||isBurn) && frameCount%2===0){
+      const pc = isBeam?'#00aaff':'#ff4400';
+      spawnParticle(sx+CELL/2,sy+CELL/2,pc,(Math.random()-.5)*2,(Math.random()-.5)*2,20,2);
+    }
+  }
+
+  // Particles
+  for(const p of particles){
+    ctx.globalAlpha = p.life/p.maxLife;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,p.size*(p.life/p.maxLife),0,Math.PI*2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // Floating texts
+  for(const f of floatingTexts){
+    ctx.globalAlpha = f.life/f.maxLife;
+    ctx.fillStyle = f.color;
+    ctx.font = 'bold 14px Orbitron';
+    ctx.textAlign = 'center';
+    ctx.fillText(f.text, f.x, f.y);
+  }
+  ctx.globalAlpha = 1;
+
+  // Chaos screen effect
+  if(hasAbility('chaos')){
+    ctx.globalAlpha = 0.05 + Math.sin(frameCount*0.1)*0.03;
+    const hue = (frameCount*3)%360;
+    ctx.fillStyle = `hsl(${hue},100%,50%)`;
+    ctx.fillRect(0,0,W,H);
+    ctx.globalAlpha = 1;
+  }
+
+  // King darkening
+  if(isKing){
+    ctx.globalAlpha = 0.15;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0,0,W,H);
+    ctx.globalAlpha = 1;
+  }
+
+  // Combo display on canvas
+  if(G.combo >= 3){
+    ctx.font = 'bold 16px Orbitron';
+    ctx.textAlign = 'right';
+    ctx.fillStyle = G.comboMult>=5?'#ff0064':G.comboMult>=3?'#ffaa00':'#00ff88';
+    ctx.shadowColor = ctx.fillStyle;
+    ctx.shadowBlur = 10;
+    ctx.fillText(`x${G.comboMult} COMBO (${G.combo})`, W-10, 20);
+    ctx.shadowBlur = 0;
+  }
+
+  // Score on canvas
+  ctx.font = 'bold 14px Orbitron';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#00ff88';
+  ctx.fillText('SCORE: '+G.score, 10, 20);
+
+  // Lives
+  if(hasSkill('immortal') || hasSkill('rebirth')){
+    ctx.fillStyle = '#ff4444';
+    for(let i=0;i<G.lives;i++){
+      ctx.fillText('♥', 10+i*18, 40);
+    }
+  }
+
+  // Cooldown indicators
+  let cdY = 60;
+  ctx.font = '10px Orbitron';
+  ctx.fillStyle = '#666';
+  const now = Date.now();
+  if(hasSkill('dash')){
+    const rem = G.cooldowns.dash?Math.max(0,G.cooldowns.dash-now):0;
+    ctx.fillStyle = rem>0?'#444':'#00aaff';
+    ctx.fillText('DASH'+(rem>0?' '+Math.ceil(rem/1000)+'s':' RDY'), 10, cdY); cdY+=14;
+  }
+  if(hasSkill('rewind')){
+    const rem = G.cooldowns.rewind?Math.max(0,G.cooldowns.rewind-now):0;
+    ctx.fillStyle = rem>0?'#444':'#00ff88';
+    ctx.fillText('REWIND'+(rem>0?' '+Math.ceil(rem/1000)+'s':' RDY'), 10, cdY); cdY+=14;
+  }
+  if(hasSkill('slow')){
+    const rem = G.cooldowns.slow?Math.max(0,G.cooldowns.slow-now):0;
+    ctx.fillStyle = rem>0?'#444':'#00ff88';
+    ctx.fillText('SLOW'+(rem>0?' '+Math.ceil(rem/1000)+'s':' RDY'), 10, cdY); cdY+=14;
+  }
+  if(hasSkill('quake')){
+    const rem = G.cooldowns.quake?Math.max(0,G.cooldowns.quake-now):0;
+    ctx.fillStyle = rem>0?'#444':'#ff4444';
+    ctx.fillText('QUAKE'+(rem>0?' '+Math.ceil(rem/1000)+'s':' RDY'), 10, cdY); cdY+=14;
+  }
+  if(hasSkill('glutton')){
+    const rem = G.cooldowns.glutton?Math.max(0,G.cooldowns.glutton-now):0;
+    ctx.fillStyle = rem>0?'#444':'#ffaa00';
+    ctx.fillText('GLUTTON'+(rem>0?' '+Math.ceil(rem/1000)+'s':' RDY'), 10, cdY); cdY+=14;
+  }
+  if(hasSkill('king')){
+    const rem = G.cooldowns.king?Math.max(0,G.cooldowns.king-now):0;
+    ctx.fillStyle = rem>0?'#444':'#ff0064';
+    ctx.fillText('KING'+(rem>0?' '+Math.ceil(rem/1000)+'s':' RDY'), 10, cdY); cdY+=14;
+  }
+  if(hasSkill('teleport')){
+    const rem = G.cooldowns.teleport?Math.max(0,G.cooldowns.teleport-now):0;
+    ctx.fillStyle = rem>0?'#444':'#aa44ff';
+    ctx.fillText('TELEPORT'+(rem>0?' '+Math.ceil(rem/1000)+'s':' RDY'), 10, cdY); cdY+=14;
+  }
+}
+
+// ========== UI UPDATES ==========
+function updateUI(){
+  const lv = getLevel(persist.exp);
+  document.getElementById('uiLevel').textContent = lv;
+  document.getElementById('uiExp').textContent = persist.exp;
+  document.getElementById('uiPoints').textContent = persist.points;
+  document.getElementById('uiHigh').textContent = persist.highScore;
+  const curExp = getExpForCur(lv);
+  const nextExp = getExpForNext(lv);
+  const pct = nextExp>curExp?Math.min(100,((persist.exp-curExp)/(nextExp-curExp))*100):100;
+  document.getElementById('expBar').style.width = pct+'%';
+  document.getElementById('expText').textContent = persist.exp+' / '+nextExp;
+  updateStatusBar();
+}
+
+function updateStatusBar(){
+  const bar = document.getElementById('statusBar');
+  if(!bar) return;
+  let html = '';
+  if(G && G.shieldActive) html += '<span class="ability ability-shield">🛡️ SHIELD</span>';
+  if(hasAbility('beam')) html += '<span class="ability ability-beam">⚡ BEAM '+Math.ceil(getAbilityRemaining('beam')/1000)+'s</span>';
+  if(hasAbility('burn')) html += '<span class="ability ability-burn">🔥 BURN '+Math.ceil(getAbilityRemaining('burn')/1000)+'s</span>';
+  if(hasAbility('ghost')) html += '<span class="ability ability-ghost">👻 GHOST '+Math.ceil(getAbilityRemaining('ghost')/1000)+'s</span>';
+  if(hasAbility('chaos')) html += '<span class="ability ability-chaos">💀 CHAOS '+Math.ceil(getAbilityRemaining('chaos')/1000)+'s</span>';
+  if(hasAbility('glutton')) html += '<span class="ability ability-glutton">😋 GLUTTON '+Math.ceil(getAbilityRemaining('glutton')/1000)+'s</span>';
+  if(hasAbility('king')) html += '<span class="ability ability-king">🐍 KING '+Math.ceil(getAbilityRemaining('king')/1000)+'s</span>';
+  if(hasAbility('slow')) html += '<span class="ability ability-slow">🕐 SLOW '+Math.ceil(getAbilityRemaining('slow')/1000)+'s</span>';
+  if(G && G.foodStunned) html += '<span class="ability ability-slow">💫 STUNNED</span>';
+  if(!html) html = '<span style="color:#444">No active abilities</span>';
+  bar.innerHTML = html;
+}
+
+// ========== VISUAL EFFECTS ==========
+function shakeCanvas(type){
+  canvasWrap.classList.remove('canvas-shake','canvas-shake-heavy');
+  void canvasWrap.offsetWidth;
+  canvasWrap.classList.add(type==='heavy'?'canvas-shake-heavy':'canvas-shake');
+  setTimeout(()=>canvasWrap.classList.remove('canvas-shake','canvas-shake-heavy'),300);
+}
+
+function showComboText(text){
+  const el = document.getElementById('comboPopup');
+  el.textContent = text;
+  el.classList.remove('show');
+  void el.offsetWidth;
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),1000);
+}
+
+function showShieldFlash(){
+  const el = document.getElementById('shieldFlash');
+  el.classList.remove('active');
+  void el.offsetWidth;
+  el.classList.add('active');
+  setTimeout(()=>el.classList.remove('active'),500);
+}
+
+function showScreenFlash(){
+  const el = document.getElementById('screenFlash');
+  el.classList.remove('active');
+  void el.offsetWidth;
+  el.classList.add('active');
+  setTimeout(()=>el.classList.remove('active'),300);
+}
+
+// ========== SKILL TREE RENDERING ==========
+function renderSkillTree(){
+  const container = document.getElementById('skillTrees');
+  container.innerHTML = '';
+  for(const tree of SKILL_TREES){
+    const div = document.createElement('div');
+    div.className = 'skill-tree tree-'+tree.id;
+    div.innerHTML = `<h3><span class="tree-icon">${tree.icon}</span>${tree.name}</h3>`;
+    const items = document.createElement('div');
+    items.className = 'skill-items';
+    for(const skill of tree.skills){
+      const unlocked = persist && persist.skills && Array.isArray(persist.skills) && persist.skills.includes(skill.id);
+      const canUn = canUnlock(skill);
+      const item = document.createElement('div');
+      item.className = 'skill-item'+(unlocked?' unlocked':'')+(canUn?'':' locked');
+      item.innerHTML = `
+        <span class="sk-icon">${skill.icon}</span>
+        <div class="sk-info">
+          <div class="sk-name">${skill.name}</div>
+          <div class="sk-desc">${skill.desc}</div>
+        </div>
+        <span class="sk-cost">${unlocked?'✓ UNLOCKED':skill.cost+' SP'}</span>
+      `;
+      if(canUn){
+        item.addEventListener('click',()=>unlockSkill(skill));
+      }
+      items.appendChild(item);
+    }
+    div.appendChild(items);
+    container.appendChild(div);
+  }
+}
+
+// ========== INPUT HANDLING ==========
+const keys = {};
+document.addEventListener('keydown',e=>{
+  keys[e.key.toLowerCase()] = true;
+  if(!G.running || G.gameOver) return;
+  if(G.paused && e.key.toLowerCase()!=='p') return;
+
+  const key = e.key.toLowerCase();
+  if((key==='arrowup'||key==='w')&&G.dir.y!==1&&!G.directionChanged){G.nextDir={x:0,y:-1};G.directionChanged=true;}
+  if((key==='arrowdown'||key==='s')&&G.dir.y!==-1&&!G.directionChanged){G.nextDir={x:0,y:1};G.directionChanged=true;}
+  if((key==='arrowleft'||key==='a')&&G.dir.x!==1&&!G.directionChanged){G.nextDir={x:-1,y:0};G.directionChanged=true;}
+  if((key==='arrowright'||key==='d')&&G.dir.x!==-1&&!G.directionChanged){G.nextDir={x:1,y:0};G.directionChanged=true;}
+  if(key==='p'){G.paused=!G.paused;document.getElementById('pauseOverlay').classList.toggle('hidden',!G.paused);}
+  if(key===' '){e.preventDefault();doDash();}
+  if(key==='r'){doRewind();}
+  if(key==='t'){doSlowTime();}
+  if(key==='e'){doQuake();}
+  if(key==='f'){doGlutton();}
+  if(key==='g'){doKing();}
+});
+document.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
+
+canvas.addEventListener('click',e=>{
+  if(!G.running||G.gameOver||G.paused) return;
+  const rect=canvas.getBoundingClientRect();
+  const scaleX=W/rect.width, scaleY=H/rect.height;
+  const cx=(e.clientX-rect.left)*scaleX, cy=(e.clientY-rect.top)*scaleY;
+  doTeleport(cx,cy);
+});
+
+// Mobile controls
+document.getElementById('mUp').addEventListener('touchstart',e=>{e.preventDefault();if(G.dir.y!==1&&!G.directionChanged){G.nextDir={x:0,y:-1};G.directionChanged=true;}});
+document.getElementById('mDown').addEventListener('touchstart',e=>{e.preventDefault();if(G.dir.y!==-1&&!G.directionChanged){G.nextDir={x:0,y:1};G.directionChanged=true;}});
+document.getElementById('mLeft').addEventListener('touchstart',e=>{e.preventDefault();if(G.dir.x!==1&&!G.directionChanged){G.nextDir={x:-1,y:0};G.directionChanged=true;}});
+document.getElementById('mRight').addEventListener('touchstart',e=>{e.preventDefault();if(G.dir.x!==-1&&!G.directionChanged){G.nextDir={x:1,y:0};G.directionChanged=true;}});
+
+// Skill toggle
+document.getElementById('skillToggle').addEventListener('click',()=>{
+  document.getElementById('skillPanel').classList.toggle('collapsed');
+});
+
+// ========== BUTTONS ==========
+document.getElementById('startBtn').addEventListener('click',()=>{
+  playSound('click');
+  document.getElementById('startOverlay').classList.add('hidden');
+  initGame();
+  G.running = true;
+  G.lives = hasSkill('immortal')?3:(hasSkill('rebirth')?2:1);
+});
+document.getElementById('resumeBtn').addEventListener('click',()=>{
+  playSound('click');
+  G.paused = false;
+  document.getElementById('pauseOverlay').classList.add('hidden');
+});
+document.getElementById('restartBtn').addEventListener('click',()=>{
+  playSound('click');
+  document.getElementById('gameOverOverlay').classList.add('hidden');
+  initGame();
+  G.running = true;
+  G.lives = hasSkill('immortal')?3:(hasSkill('rebirth')?2:1);
+});
+
+// ========== GAME LOOP ==========
+function gameLoop(timestamp){
+  if(!lastTime) lastTime = timestamp;
+  const dt = timestamp - lastTime;
+  lastTime = timestamp;
+  frameCount++;
+
+  if(G.running && !G.paused && !G.gameOver){
+    const tickMs = G.slowMode ? BASE_TICK * 2 : BASE_TICK;
+    const effectiveTick = tickMs / G.speedMult;
+    accumulator += dt;
+    while(accumulator >= effectiveTick){
+      gameTick();
+      accumulator -= effectiveTick;
+    }
+  }
+
+  updateParticles();
+  updateAfterimages();
+  updateMiniSnakes();
+  render();
+  if(frameCount%10===0) updateStatusBar();
+
+  requestAnimationFrame(gameLoop);
+}
+
+// ========== INIT ==========
+initBgParticles();
+renderSkillTree();
+updateUI();
+render(); // Initial render
+requestAnimationFrame(gameLoop);
+</script>
+
+<!-- Leaderboard Toggle Button -->
+<button class="lb-toggle" id="lbToggle" title="排行榜" style="display:none">🏆</button>
+
+<!-- Leaderboard Panel -->
+<div class="lb-panel" id="lbPanel">
+  <button class="lb-close" id="lbCloseBtn">✕</button>
+  <h2>🏆 LEADERBOARD - 排行榜</h2>
+  <div id="lbContent">
+    <div class="lb-loading">加载中...</div>
+  </div>
+</div>
+
+<!-- Firebase Status -->
+<div class="firebase-status" id="firebaseStatus"></div>
+
+<!-- ========== FIREBASE CDN (compat mode) ========== -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+<!-- ========== FIREBASE CONFIG & ACCOUNT SYSTEM ========== -->
+<script>
+// Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyAt-kM8EriT3IN1HmZdVGK_vcU92RFvqkU",
+  authDomain: "tanchishe.firebaseapp.com",
+  databaseURL: "https://tanchishe-default-rtdb.firebaseio.com",
+  projectId: "tanchishe",
+  storageBucket: "tanchishe.firebasestorage.app",
+  messagingSenderId: "679340849989",
+  appId: "1:679340849989:web:95d6d033f7439326971c2c",
+  measurementId: "G-7CZ4VY0Z58"
+};
+
+// Initialize Firebase (with error handling)
+let firebaseReady = false;
+try {
+  firebase.initializeApp(firebaseConfig);
+  firebaseReady = true;
+} catch(e) {
+  console.warn('Firebase init failed:', e);
+}
+
+// Auth state
+let currentUser = null;
+let isGuest = false;
+let isAuthenticating = false; // Prevent onAuthStateChanged from interfering
+
+// DOM Elements
+const authOverlay = document.getElementById('authOverlay');
+const authEmail = document.getElementById('authEmail');
+const authPassword = document.getElementById('authPassword');
+const authLoginBtn = document.getElementById('authLoginBtn');
+const authRegisterBtn = document.getElementById('authRegisterBtn');
+const authGuestBtn = document.getElementById('authGuestBtn');
+const authError = document.getElementById('authError');
+const userInfo = document.getElementById('userInfo');
+const guestInfo = document.getElementById('guestInfo');
+const uiUsername = document.getElementById('uiUsername');
+const logoutBtn = document.getElementById('logoutBtn');
+const lbOpenBtn = document.getElementById('lbOpenBtn');
+const lbOpenBtnGuest = document.getElementById('lbOpenBtnGuest');
+const lbToggle = document.getElementById('lbToggle');
+const lbPanel = document.getElementById('lbPanel');
+const lbCloseBtn = document.getElementById('lbCloseBtn');
+const lbContent = document.getElementById('lbContent');
+const firebaseStatus = document.getElementById('firebaseStatus');
+
+// Show error message
+function showAuthError(msg){
+  authError.textContent = msg;
+  authError.style.color = 'var(--red)';
+  setTimeout(()=>{authError.textContent='';}, 5000);
+}
+
+// Translate Firebase error codes to Chinese
+function getFirebaseErrorMsg(code){
+  const msgs = {
+    'auth/user-not-found': '账号不存在，请先注册',
+    'auth/wrong-password': '密码错误',
+    'auth/email-already-in-use': '该邮箱已被注册',
+    'auth/weak-password': '密码强度不够，至少6位',
+    'auth/invalid-email': '邮箱格式不正确',
+    'auth/too-many-requests': '请求过于频繁，请稍后再试',
+    'auth/network-request-failed': '网络连接失败，请检查网络',
+    'auth/invalid-credential': '邮箱或密码错误',
+    'auth/operation-not-allowed': '登录方式未启用，请在Firebase控制台开启邮箱登录'
+  };
+  return msgs[code] || code;
+}
+
+// Update UI based on auth state
+function updateAuthUI(){
+  if(currentUser){
+    authOverlay.classList.add('hidden');
+    userInfo.style.display = 'flex';
+    guestInfo.style.display = 'none';
+    uiUsername.textContent = currentUser.email.split('@')[0];
+    lbToggle.style.display = 'flex';
+    firebaseStatus.textContent = 'Firebase: 已登录';
+    // Load user data from Firebase
+    loadFromFirebase();
+  } else if(isGuest){
+    authOverlay.classList.add('hidden');
+    userInfo.style.display = 'none';
+    guestInfo.style.display = 'flex';
+    lbToggle.style.display = 'flex';
+    firebaseStatus.textContent = 'Firebase: 游客模式';
+  } else {
+    authOverlay.classList.remove('hidden');
+    userInfo.style.display = 'none';
+    guestInfo.style.display = 'none';
+    lbToggle.style.display = 'none';
+    firebaseStatus.textContent = '';
+  }
+}
+
+// Login
+authLoginBtn.addEventListener('click', ()=>{
+  const email = authEmail.value.trim();
+  const password = authPassword.value;
+  if(!email || !password){
+    showAuthError('请输入邮箱和密码');
+    return;
+  }
+  if(!firebaseReady){
+    showAuthError('Firebase 未加载成功，请检查网络连接后刷新页面');
+    return;
+  }
+  showAuthError('登录中...');
+  authError.style.color = '#00ff88';
+  isAuthenticating = true;
+  console.log('Attempting login with:', email);
+  firebase.auth().signInWithEmailAndPassword(email, password)
+    .then((userCredential)=>{
+      console.log('Login success:', userCredential.user.email);
+      isAuthenticating = false;
+      currentUser = userCredential.user;
+      isGuest = false;
+      updateAuthUI();
+    })
+    .catch((error)=>{
+      console.error('Login error:', error.code, error.message);
+      isAuthenticating = false;
+      showAuthError('登录失败: ' + getFirebaseErrorMsg(error.code));
+    });
+});
+
+// Register
+authRegisterBtn.addEventListener('click', ()=>{
+  const email = authEmail.value.trim();
+  const password = authPassword.value;
+  if(!email || !password){
+    showAuthError('请输入邮箱和密码');
+    return;
+  }
+  if(password.length < 6){
+    showAuthError('密码至少需要6位');
+    return;
+  }
+  if(!firebaseReady){
+    showAuthError('Firebase 未加载成功，请检查网络连接后刷新页面');
+    return;
+  }
+  showAuthError('注册中...');
+  authError.style.color = '#00ff88';
+  isAuthenticating = true;
+  console.log('Attempting register with:', email);
+  firebase.auth().createUserWithEmailAndPassword(email, password)
+    .then((userCredential)=>{
+      console.log('Register success:', userCredential.user.email);
+      isAuthenticating = false;
+      currentUser = userCredential.user;
+      isGuest = false;
+      // Reset local data for new user
+      persist = {exp:0, skills:[], points:0, highScore:0};
+      saveData(persist);
+      // Save initial data to Firebase
+      saveToFirebase();
+      updateAuthUI();
+      updateUI();
+      renderSkillTree();
+    })
+    .catch((error)=>{
+      console.error('Register error:', error.code, error.message);
+      isAuthenticating = false;
+      showAuthError('注册失败: ' + getFirebaseErrorMsg(error.code));
+    });
+});
+
+// Guest mode
+authGuestBtn.addEventListener('click', ()=>{
+  isGuest = true;
+  currentUser = null;
+  updateAuthUI();
+});
+
+// Logout
+logoutBtn.addEventListener('click', ()=>{
+  firebase.auth().signOut().then(()=>{
+    currentUser = null;
+    isGuest = false;
+    updateAuthUI();
+  });
+});
+
+// Auth state listener
+if(firebaseReady){
+  firebase.auth().onAuthStateChanged((user)=>{
+    // Skip if user is in the middle of login/register
+    if(isAuthenticating) return;
+    if(user){
+      currentUser = user;
+      isGuest = false;
+    } else {
+      currentUser = null;
+    }
+    updateAuthUI();
+  });
+}
+
+// Save data to Firebase
+function saveToFirebase(){
+  if(!currentUser || !firebaseReady) return;
+  try {
+  const userRef = firebase.database().ref('users/' + currentUser.uid);
+  userRef.set({
+    exp: persist.exp,
+    skills: persist.skills,
+    points: persist.points,
+    highScore: persist.highScore,
+    lastUpdated: Date.now()
+  });
+  // Update leaderboard
+  const lbRef = firebase.database().ref('leaderboard/' + currentUser.uid);
+  lbRef.set({
+    username: currentUser.email.split('@')[0],
+    highScore: persist.highScore,
+    lastUpdated: Date.now()
+  });
+  } catch(e){ console.warn('Save to Firebase failed:', e); }
+}
+
+// Load data from Firebase
+function loadFromFirebase(){
+  if(!currentUser || !firebaseReady) return;
+  try {
+  const userRef = firebase.database().ref('users/' + currentUser.uid);
+  userRef.once('value').then((snapshot)=>{
+    const data = snapshot.val();
+    if(data){
+      persist.exp = data.exp || 0;
+      persist.skills = data.skills || [];
+      persist.points = data.points || 0;
+      persist.highScore = data.highScore || 0;
+      saveData(persist);
+      updateUI();
+      renderSkillTree();
+    }
+  }).catch(e=>console.warn('Load from Firebase failed:', e));
+  } catch(e){ console.warn('Load from Firebase failed:', e); }
+}
+
+// Leaderboard functions
+function openLeaderboard(){
+  lbPanel.classList.add('open');
+  loadLeaderboard();
+}
+
+function closeLeaderboard(){
+  lbPanel.classList.remove('open');
+}
+
+function loadLeaderboard(){
+  lbContent.innerHTML = '<div class="lb-loading">加载中...</div>';
+  const lbRef = firebase.database().ref('leaderboard');
+  lbRef.orderByChild('highScore').limitToLast(50).once('value').then((snapshot)=>{
+    const data = snapshot.val();
+    if(!data){
+      lbContent.innerHTML = '<div class="lb-empty">暂无数据</div>';
+      return;
+    }
+    // Convert to array and sort
+    const entries = [];
+    for(const uid in data){
+      entries.push({
+        uid: uid,
+        username: data[uid].username,
+        highScore: data[uid].highScore
+      });
+    }
+    entries.sort((a,b)=>b.highScore - a.highScore);
+    
+    // Build table
+    let html = '<table class="lb-table"><thead><tr><th>排名</th><th>玩家</th><th>最高分</th></tr></thead><tbody>';
+    entries.forEach((entry, index)=>{
+      const isMe = currentUser && entry.uid === currentUser.uid;
+      html += `<tr class="${isMe?'me':''}"><td class="rank">#${index+1}</td><td>${entry.username}</td><td class="score">${entry.highScore}</td></tr>`;
+    });
+    html += '</tbody></table>';
+    lbContent.innerHTML = html;
+  }).catch((error)=>{
+    lbContent.innerHTML = '<div class="lb-empty">加载失败: ' + error.message + '</div>';
+  });
+}
+
+// Leaderboard event listeners
+lbOpenBtn.addEventListener('click', openLeaderboard);
+lbOpenBtnGuest.addEventListener('click', openLeaderboard);
+lbToggle.addEventListener('click', openLeaderboard);
+lbCloseBtn.addEventListener('click', closeLeaderboard);
+
+// Close leaderboard on outside click
+lbPanel.addEventListener('click', (e)=>{
+  if(e.target === lbPanel){
+    closeLeaderboard();
+  }
+});
+</script>
+
+<!-- GM Panel -->
+<button class="gm-toggle" id="gmToggle" title="GM Panel (F1)">⚙</button>
+<div class="gm-panel" id="gmPanel">
+  <h2>⚙ GM PANEL</h2>
+
+  <!-- Lock Screen -->
+  <div class="gm-lock" id="gmLock">
+    <div class="gm-lock-icon">🔒</div>
+    <div class="gm-lock-text">GM PANEL LOCKED</div>
+    <input type="password" id="gmPassword" placeholder="Enter password" maxlength="10">
+    <button class="gm-btn" onclick="gmUnlock()">UNLOCK</button>
+    <div class="gm-lock-hint">Default: 123456</div>
+  </div>
+
+  <!-- Content (hidden until unlocked) -->
+  <div class="gm-content" id="gmContent" style="display:none;">
+
+  <div class="gm-section">
+    <h3>📊 角色属性</h3>
+    <div class="gm-row">
+      <label>等级</label>
+      <input type="number" id="gmLevel" min="1" max="99" value="1">
+      <button class="gm-btn" onclick="gmSetLevel()">SET</button>
+    </div>
+    <div class="gm-row">
+      <label>经验值</label>
+      <input type="number" id="gmExp" min="0" value="0">
+      <button class="gm-btn" onclick="gmSetExp()">SET</button>
+    </div>
+    <div class="gm-row">
+      <label>技能点</label>
+      <input type="number" id="gmSP" min="0" value="0">
+      <button class="gm-btn" onclick="gmSetSP()">SET</button>
+    </div>
+    <div class="gm-row">
+      <label>分数</label>
+      <input type="number" id="gmScore" min="0" value="0">
+      <button class="gm-btn" onclick="gmSetScore()">SET</button>
+    </div>
+    <div class="gm-row">
+      <label>生命</label>
+      <input type="number" id="gmLives" min="1" max="99" value="1">
+      <button class="gm-btn" onclick="gmSetLives()">SET</button>
+    </div>
+  </div>
+
+  <div class="gm-section">
+    <h3>⚡ 游戏速度</h3>
+    <div class="gm-row">
+      <label>速度</label>
+      <input type="range" id="gmSpeed" min="1" max="20" value="10" oninput="gmSpeedChange(this.value)">
+      <span class="val-display" id="gmSpeedVal">10</span>
+    </div>
+  </div>
+
+  <div class="gm-section">
+    <h3>🛡️ 作弊开关</h3>
+    <div class="gm-row">
+      <label class="gm-check"><input type="checkbox" id="gmGodMode" onchange="gmToggleGod(this.checked)"> 无敌模式</label>
+    </div>
+    <div class="gm-row">
+      <label class="gm-check"><input type="checkbox" id="gmNoDeath" onchange="gmToggleNoDeath(this.checked)"> 禁止死亡</label>
+    </div>
+    <div class="gm-row">
+      <label class="gm-check"><input type="checkbox" id="gmShowGrid" onchange="gmToggleGrid(this.checked)"> 显示网格</label>
+    </div>
+    <div class="gm-row">
+      <label class="gm-check"><input type="checkbox" id="gmAutoCombo" onchange="gmToggleAutoCombo(this.checked)"> 永久连击</label>
+    </div>
+  </div>
+
+  <div class="gm-section">
+    <h3>🍎 食物控制</h3>
+    <div class="gm-btn-row">
+      <button class="gm-btn" onclick="gmSpawnFood('normal')">🍎 普通</button>
+      <button class="gm-btn" onclick="gmSpawnFood('beam')">⚡ 弹射</button>
+      <button class="gm-btn" onclick="gmSpawnFood('burn')">🔥 火焰</button>
+      <button class="gm-btn" onclick="gmSpawnFood('ghost')">👻 幽灵</button>
+      <button class="gm-btn" onclick="gmSpawnFood('shield')">🛡️ 护盾</button>
+      <button class="gm-btn" onclick="gmSpawnFood('chaos')">💀 混沌</button>
+    </div>
+    <div class="gm-row" style="margin-top:8px">
+      <button class="gm-btn" onclick="gmSpawnFoodAll()">一键刷满食物</button>
+      <button class="gm-btn" onclick="gmClearFood()">清除所有食物</button>
+    </div>
+  </div>
+
+  <div class="gm-section">
+    <h3>🐍 蛇身控制</h3>
+    <div class="gm-btn-row">
+      <button class="gm-btn" onclick="gmGrowSnake(5)">+5 节</button>
+      <button class="gm-btn" onclick="gmGrowSnake(10)">+10 节</button>
+      <button class="gm-btn" onclick="gmGrowSnake(20)">+20 节</button>
+      <button class="gm-btn" onclick="gmShrinkSnake(5)">-5 节</button>
+    </div>
+  </div>
+
+  <div class="gm-section">
+    <h3>⏰ 能力激活</h3>
+    <div class="gm-btn-row">
+      <button class="gm-btn" onclick="gmActivateAbility('beam',10000)">⚡ 弹射</button>
+      <button class="gm-btn" onclick="gmActivateAbility('burn',10000)">🔥 火焰</button>
+      <button class="gm-btn" onclick="gmActivateAbility('ghost',10000)">👻 穿墙</button>
+      <button class="gm-btn" onclick="gmActivateAbility('glutton',10000)">😋 暴食</button>
+      <button class="gm-btn" onclick="gmActivateKing()">🐍 蛇王</button>
+    </div>
+  </div>
+
+  <div class="gm-section">
+    <h3>🔧 技能管理</h3>
+    <div class="gm-btn-row">
+      <button class="gm-btn" onclick="gmUnlockAll()">解锁全部技能</button>
+      <button class="gm-btn danger" onclick="gmLockAll()">重置全部技能</button>
+    </div>
+  </div>
+
+  <div class="gm-section">
+    <h3>🗑️ 数据管理</h3>
+    <div class="gm-btn-row">
+      <button class="gm-btn" onclick="gmResetGame()">重置当前局</button>
+      <button class="gm-btn danger" onclick="gmResetAll()">清除全部数据</button>
+    </div>
+  </div>
+  </div><!-- /gm-content -->
+</div>
+
+<script>
+// ========== GM FUNCTIONS ==========
+let gmEnabled = false;
+let gmUnlocked = false;
+const GM_PASSWORD = '205893';
+
+// Toggle panel
+document.getElementById('gmToggle').addEventListener('click',()=>{
+  document.getElementById('gmPanel').classList.toggle('open');
+});
+
+// F1 to toggle
+document.addEventListener('keydown',e=>{
+  if(e.key==='F1'){e.preventDefault();document.getElementById('gmPanel').classList.toggle('open');}
+});
+
+// Lock/Unlock functions
+function gmUnlock(){
+  const input = document.getElementById('gmPassword').value;
+  if(input === GM_PASSWORD){
+    gmUnlocked = true;
+    document.getElementById('gmLock').style.display = 'none';
+    document.getElementById('gmContent').style.display = 'block';
+  }else{
+    const lock = document.getElementById('gmLock');
+    lock.classList.add('shake');
+    setTimeout(()=>lock.classList.remove('shake'), 300);
+    document.getElementById('gmPassword').value = '';
+    document.getElementById('gmPassword').placeholder = 'Wrong password!';
+  }
+}
+
+// Enter key to submit password
+document.getElementById('gmPassword').addEventListener('keypress',e=>{
+  if(e.key==='Enter') gmUnlock();
+});
+
+// Sync GM panel values with current state
+function gmSync(){
+  document.getElementById('gmLevel').value = getLevel(persist.exp);
+  document.getElementById('gmExp').value = persist.exp;
+  document.getElementById('gmSP').value = persist.points;
+  document.getElementById('gmScore').value = G.score || 0;
+  document.getElementById('gmLives').value = G.lives || 1;
+  document.getElementById('gmSpeed').value = G.speedMult ? Math.round(10/G.speedMult) : 10;
+  document.getElementById('gmSpeedVal').textContent = document.getElementById('gmSpeed').value;
+  document.getElementById('gmGodMode').checked = G.invincible || false;
+  document.getElementById('gmNoDeath').checked = gmEnabled;
+}
+setInterval(gmSync, 500);
+
+// === Set functions ===
+function gmSetLevel(){
+  const lv = parseInt(document.getElementById('gmLevel').value)||1;
+  persist.exp = getExpForCur(lv);
+  persist.points = (lv-1); // Give SP equal to level-1
+  saveData(persist);
+  updateUI();
+  renderSkillTree();
+}
+function gmSetExp(){
+  persist.exp = parseInt(document.getElementById('gmExp').value)||0;
+  const oldLv = getLevel(persist.exp);
+  // Recalculate points based on level
+  saveData(persist);
+  updateUI();
+  renderSkillTree();
+}
+function gmSetSP(){
+  persist.points = parseInt(document.getElementById('gmSP').value)||0;
+  saveData(persist);
+  updateUI();
+  renderSkillTree();
+}
+function gmSetScore(){
+  if(G) G.score = parseInt(document.getElementById('gmScore').value)||0;
+  updateUI();
+}
+function gmSetLives(){
+  if(G) G.lives = parseInt(document.getElementById('gmLives').value)||1;
+}
+
+// === Speed ===
+function gmSpeedChange(val){
+  document.getElementById('gmSpeedVal').textContent = val;
+  if(G) G.speedMult = parseInt(val)/10;
+}
+
+// === Cheats ===
+function gmToggleGod(on){
+  if(G) G.invincible = on;
+}
+function gmToggleNoDeath(on){
+  gmEnabled = on;
+  if(on){
+    const origHandleDeath = handleDeath;
+    window._origHandleDeath = origHandleDeath;
+  }
+}
+function gmToggleGrid(on){
+  // Grid is always on, this could be extended
+}
+function gmToggleAutoCombo(on){
+  if(G) G.comboMult = on ? 5 : 1;
+}
+
+// Override handleDeath if no-death is on
+const _origHandleDeath = window.handleDeath;
+window.handleDeath = function(){
+  if(gmEnabled && G){
+    // Cancel death - just don't die
+    return;
+  }
+  if(_origHandleDeath) _origHandleDeath();
+};
+
+// === Food ===
+function gmSpawnFood(typeId){
+  if(!G || !G.snake) return;
+  const type = FOOD_TYPES.find(f=>f.id===typeId) || FOOD_TYPES[0];
+  let attempts = 0;
+  while(attempts<100){
+    const x = Math.floor(Math.random()*COLS);
+    const y = Math.floor(Math.random()*ROWS);
+    if(G.snake.some(s=>s.x===x&&s.y===y)){attempts++;continue;}
+    if(G.foods.some(f=>f.x===x&&f.y===y)){attempts++;continue;}
+    G.foods.push({x,y,type,pulse:0});
+    return;
+  }
+}
+function gmSpawnFoodAll(){
+  if(!G) return;
+  G.foods = [];
+  for(const type of FOOD_TYPES){
+    for(let i=0;i<3;i++) gmSpawnFood(type.id);
+  }
+}
+function gmClearFood(){
+  if(G) G.foods = [];
+}
+
+// === Snake ===
+function gmGrowSnake(n){
+  if(!G || !G.snake) return;
+  const tail = G.snake[G.snake.length-1];
+  for(let i=0;i<n;i++){
+    G.snake.push({x:tail.x, y:tail.y});
+  }
+}
+function gmShrinkSnake(n){
+  if(!G || !G.snake) return;
+  G.snake = G.snake.slice(0, Math.max(1, G.snake.length-n));
+}
+
+// === Abilities ===
+function gmActivateAbility(type, dur){
+  if(!G) return;
+  G.abilities[type] = Date.now() + dur;
+  if(type==='glutton'){G.invincible=true;G.speedMult=2;G.scoreMult=3;}
+  if(type==='beam'){G.invincible=true;}
+}
+function gmActivateKing(){
+  if(!G) return;
+  G.kingMode = true;
+  G.invincible = true;
+  setTimeout(()=>{if(G){G.kingMode=false;if(!document.getElementById('gmGodMode').checked)G.invincible=false;}}, 8000);
+}
+
+// === Skills ===
+function gmUnlockAll(){
+  const allIds = [];
+  for(const tree of SKILL_TREES) for(const s of tree.skills) allIds.push(s.id);
+  persist.skills = allIds;
+  persist.points = 99;
+  saveData(persist);
+  renderSkillTree();
+  updateUI();
+}
+function gmLockAll(){
+  persist.skills = [];
+  persist.points = 0;
+  saveData(persist);
+  renderSkillTree();
+  updateUI();
+}
+
+// === Reset ===
+function gmResetGame(){
+  if(G){
+    initGame();
+    G.running = true;
+    document.getElementById('startOverlay').classList.add('hidden');
+    document.getElementById('gameOverOverlay').classList.add('hidden');
+    document.getElementById('pauseOverlay').classList.add('hidden');
+  }
+}
+function gmResetAll(){
+  if(confirm('确定要清除全部数据吗？此操作不可撤销！')){
+    localStorage.removeItem('snakeEvolution_exp');
+    localStorage.removeItem('snakeEvolution_skills');
+    localStorage.removeItem('snakeEvolution_points');
+    localStorage.removeItem('snakeEvolution_highScore');
+    persist = loadData();
+    updateUI();
+    renderSkillTree();
+    gmResetGame();
+  }
+}
+</script>
+</body>
+</html>
