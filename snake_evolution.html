@@ -1743,8 +1743,16 @@ authLoginBtn.addEventListener('click', ()=>{
   authError.style.color = '#00ff88';
   isAuthenticating = true;
   console.log('Attempting login with:', email);
+  
+  // Set timeout for login request
+  const loginTimeout = setTimeout(()=>{
+    isAuthenticating = false;
+    showAuthError('登录超时，请检查网络连接（Firebase 在中国大陆可能无法访问）');
+  }, 15000);
+  
   firebase.auth().signInWithEmailAndPassword(email, password)
     .then((userCredential)=>{
+      clearTimeout(loginTimeout);
       console.log('Login success:', userCredential.user.email);
       isAuthenticating = false;
       currentUser = userCredential.user;
@@ -1752,6 +1760,7 @@ authLoginBtn.addEventListener('click', ()=>{
       updateAuthUI();
     })
     .catch((error)=>{
+      clearTimeout(loginTimeout);
       console.error('Login error:', error.code, error.message);
       isAuthenticating = false;
       showAuthError('登录失败: ' + getFirebaseErrorMsg(error.code));
@@ -1778,8 +1787,16 @@ authRegisterBtn.addEventListener('click', ()=>{
   authError.style.color = '#00ff88';
   isAuthenticating = true;
   console.log('Attempting register with:', email);
+  
+  // Set timeout for register request
+  const registerTimeout = setTimeout(()=>{
+    isAuthenticating = false;
+    showAuthError('注册超时，请检查网络连接（Firebase 在中国大陆可能无法访问）');
+  }, 15000);
+  
   firebase.auth().createUserWithEmailAndPassword(email, password)
     .then((userCredential)=>{
+      clearTimeout(registerTimeout);
       console.log('Register success:', userCredential.user.email);
       isAuthenticating = false;
       currentUser = userCredential.user;
@@ -1794,6 +1811,7 @@ authRegisterBtn.addEventListener('click', ()=>{
       renderSkillTree();
     })
     .catch((error)=>{
+      clearTimeout(registerTimeout);
       console.error('Register error:', error.code, error.message);
       isAuthenticating = false;
       showAuthError('注册失败: ' + getFirebaseErrorMsg(error.code));
